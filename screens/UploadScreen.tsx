@@ -4,7 +4,6 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import React, { useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../lib/supabase';
 import { formatFileSize } from '../types/database';
 
@@ -78,11 +77,48 @@ const UploadScreen: React.FC<UploadScreenProps> = ({ navigation, route }) => {
       const results = [];
 
       for (const file of filesToUpload) {
-        // Get presigned URL from Edge Function
-        const { data: uploadData, error: uploadError } = await supabase.functions.invoke(
+        // Step 1: Get presigned URL from Edge Function
+        const { data: presignedData, error: presignedError } = await supabase.functions.invoke(
           'upload-to-s3',
           {
             body: {
+              action: 'get-presigned-url',
+              fileName: file.name,
+              fileType: file.type,
+              fileSize: file.size,
+            },
+          }
+        );
+
+        if (presignedError) throw presignedError;
+
+        // Step 2: Upload to S3 using presigned URL
+        const formData = new FormData();
+        Object.entries(presignedData.formData).forEach(([key, value]) => {
+          formData.append(key, value as string);
+        });
+        formData.append('file', {
+          uri: file.uri,
+          type: file.type,
+          name: file.name,
+        } as any);
+
+        const uploadResponse = await fetch(presignedData.uploadUrl, {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error(`S3 upload failed for ${file.name}`);
+        }
+
+        // Step 3: Create file record in database
+        const { data: recordData, error: recordError } = await supabase.functions.invoke(
+          'upload-to-s3',
+          {
+            body: {
+              action: 'create-file-record',
+              s3Key: presignedData.s3Key,
               fileName: file.name,
               fileType: file.type,
               fileSize: file.size,
@@ -91,61 +127,15 @@ const UploadScreen: React.FC<UploadScreenProps> = ({ navigation, route }) => {
           }
         );
 
-        if (uploadError) throw uploadError;
+        if (recordError) throw recordError;
 
-        console.log('Upload data received:', uploadData);
-
-        // Upload to S3 using presigned URL
-        const formData = new FormData();
-
-        // Add all presigned URL fields first
-        Object.entries(uploadData.formData).forEach(([key, value]) => {
-          formData.append(key, value as string);
-        });
-
-        // Important: file field must be last for S3 presigned uploads
-        // React Native requires specific format for file objects
-        formData.append('file', {
-          uri: file.uri,
-          type: file.type,
-          name: file.name,
-        } as any);
-
-        console.log('Uploading to S3:', {
-          url: uploadData.uploadUrl,
-          fileName: file.name,
-          fileType: file.type,
-          fileSize: file.size,
-        });
-
-        const uploadResponse = await fetch(uploadData.uploadUrl, {
-          method: 'POST',
-          body: formData,
-          // Don't set Content-Type header - let React Native handle it for FormData
-        });
-
-        console.log('S3 Upload response:', {
-          status: uploadResponse.status,
-          statusText: uploadResponse.statusText,
-          ok: uploadResponse.ok,
-        });
-
-        if (!uploadResponse.ok) {
-          const errorText = await uploadResponse.text();
-          console.error('S3 Upload error response:', errorText);
-          throw new Error(
-            `Upload failed for ${file.name}: ${uploadResponse.status} ${uploadResponse.statusText}`
-          );
-        }
-
-        results.push({ fileName: file.name, fileId: uploadData.fileId });
+        results.push({ fileName: file.name, fileId: recordData.fileRecord.id });
       }
 
       return results;
     },
     onSuccess: (results) => {
-      // Invalidate and refetch file queries
-      queryClient.invalidateQueries({ queryKey: ['files'] });
+      queryClient.invalidateQueries({ queryKey: ['files', folderId] });
       queryClient.invalidateQueries({ queryKey: ['folders'] });
       queryClient.invalidateQueries({ queryKey: ['storage-stats'] });
 
@@ -173,36 +163,7 @@ const UploadScreen: React.FC<UploadScreenProps> = ({ navigation, route }) => {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50 dark:bg-black">
-      {/* Header */}
-      <View className="flex-row items-center justify-between border-b border-gray-200 bg-white px-6 py-4 dark:border-gray-800 dark:bg-gray-900">
-        <Pressable
-          onPress={() => navigation.goBack()}
-          className="rounded-lg p-2 active:bg-gray-100 dark:active:bg-gray-800">
-          <Ionicons name="close" size={24} color="#6b7280" />
-        </Pressable>
-        <Text className="text-lg font-semibold text-gray-900 dark:text-white">Upload Files</Text>
-        <Pressable
-          onPress={handleUpload}
-          disabled={files.length === 0 || uploadMutation.isPending}
-          className={`rounded-lg px-4 py-2 ${
-            files.length === 0 || uploadMutation.isPending
-              ? 'bg-gray-200 dark:bg-gray-700'
-              : 'bg-blue-600 active:bg-blue-700'
-          }`}>
-          {uploadMutation.isPending ? (
-            <ActivityIndicator size="small" color="white" />
-          ) : (
-            <Text
-              className={`font-semibold ${
-                files.length === 0 ? 'text-gray-400 dark:text-gray-500' : 'text-white'
-              }`}>
-              Upload {files.length > 0 && `(${files.length})`}
-            </Text>
-          )}
-        </Pressable>
-      </View>
-
+    <View className="flex-1 bg-gray-50 dark:bg-black">
       <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 32 }}>
         <View className="p-6">
           {/* Upload Options */}
@@ -288,6 +249,37 @@ const UploadScreen: React.FC<UploadScreenProps> = ({ navigation, route }) => {
                   );
                 })}
               </View>
+
+              {/* Upload Button */}
+              <Pressable
+                onPress={handleUpload}
+                disabled={files.length === 0 || uploadMutation.isPending}
+                className={`mt-6 rounded-2xl px-6 py-4 ${
+                  files.length === 0 || uploadMutation.isPending
+                    ? 'bg-gray-200 dark:bg-gray-700'
+                    : 'bg-blue-600 active:bg-blue-700'
+                }`}>
+                <View className="flex-row items-center justify-center">
+                  {uploadMutation.isPending ? (
+                    <ActivityIndicator size="small" color="white" style={{ marginRight: 8 }} />
+                  ) : (
+                    <Ionicons
+                      name="cloud-upload"
+                      size={24}
+                      color="white"
+                      style={{ marginRight: 8 }}
+                    />
+                  )}
+                  <Text
+                    className={`text-lg font-semibold ${
+                      files.length === 0 ? 'text-gray-400 dark:text-gray-500' : 'text-white'
+                    }`}>
+                    {uploadMutation.isPending
+                      ? 'Uploading...'
+                      : `Upload ${files.length} file${files.length === 1 ? '' : 's'}`}
+                  </Text>
+                </View>
+              </Pressable>
             </View>
           )}
 
@@ -342,7 +334,7 @@ const UploadScreen: React.FC<UploadScreenProps> = ({ navigation, route }) => {
           </View>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 

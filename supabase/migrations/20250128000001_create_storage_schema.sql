@@ -9,12 +9,6 @@ CREATE TABLE folders (
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
-    path TEXT GENERATED ALWAYS AS (
-        CASE 
-            WHEN parent_id IS NULL THEN name
-            ELSE name -- Will be updated with a trigger to include full path
-        END
-    ) STORED,
     UNIQUE(user_id, parent_id, name)
 );
 
@@ -40,60 +34,13 @@ CREATE INDEX idx_folders_parent_id ON folders(parent_id);
 CREATE INDEX idx_files_user_id ON files(user_id);
 CREATE INDEX idx_files_folder_id ON files(folder_id);
 
--- Function to update folder path recursively
+-- Simplified folder path function that just returns the trigger
 CREATE OR REPLACE FUNCTION update_folder_path()
 RETURNS TRIGGER AS $$
 BEGIN
-    -- Update the path for the current folder and all its descendants
-    WITH RECURSIVE folder_hierarchy AS (
-        -- Base case: start with the updated folder
-        SELECT id, name, parent_id, 
-               CASE 
-                   WHEN parent_id IS NULL THEN name::TEXT
-                   ELSE (
-                       SELECT string_agg(f.name, '/' ORDER BY level DESC)
-                       FROM (
-                           WITH RECURSIVE parent_path AS (
-                               SELECT id, name, parent_id, 1 as level
-                               FROM folders 
-                               WHERE id = NEW.parent_id
-                               
-                               UNION ALL
-                               
-                               SELECT f.id, f.name, f.parent_id, pp.level + 1
-                               FROM folders f
-                               JOIN parent_path pp ON f.id = pp.parent_id
-                           )
-                           SELECT name FROM parent_path ORDER BY level DESC
-                       ) f
-                   ) || '/' || name
-               END as new_path
-        FROM folders 
-        WHERE id = NEW.id
-        
-        UNION ALL
-        
-        -- Recursive case: get all descendants
-        SELECT f.id, f.name, f.parent_id,
-               fh.new_path || '/' || f.name
-        FROM folders f
-        JOIN folder_hierarchy fh ON f.parent_id = fh.id
-    )
-    UPDATE folders 
-    SET path = folder_hierarchy.new_path,
-        updated_at = NOW()
-    FROM folder_hierarchy 
-    WHERE folders.id = folder_hierarchy.id;
-    
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
-
--- Create trigger for path updates
-CREATE TRIGGER trigger_update_folder_path
-    AFTER INSERT OR UPDATE ON folders
-    FOR EACH ROW
-    EXECUTE FUNCTION update_folder_path();
 
 -- Function to update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()

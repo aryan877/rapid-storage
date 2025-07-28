@@ -42,7 +42,7 @@ const ProfileScreen: React.FC = () => {
       // Get total files count and size
       const { data: files, error: filesError } = await supabase
         .from('files')
-        .select('size_bytes, created_at, name, mime_type')
+        .select('id, size_bytes, created_at, name, mime_type')
         .eq('user_id', authUser.id);
 
       if (filesError) throw filesError;

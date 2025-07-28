@@ -1,101 +1,12 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { S3Client } from 'jsr:@bradenmacdonald/s3-lite-client@0.9.2';
+import { createClient } from 'jsr:@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-interface UploadRequest {
-  fileName: string;
-  fileType: string;
-  fileSize: number;
-  folderId?: string;
-}
-
-// AWS S3 Client using Web API
-class S3Client {
-  private accessKeyId: string;
-  private secretAccessKey: string;
-  private region: string;
-  private bucket: string;
-
-  constructor(accessKeyId: string, secretAccessKey: string, region: string, bucket: string) {
-    this.accessKeyId = accessKeyId;
-    this.secretAccessKey = secretAccessKey;
-    this.region = region;
-    this.bucket = bucket;
-  }
-
-  async createPresignedPost(params: {
-    Key: string;
-    ContentType: string;
-    ContentLengthRange: [number, number];
-    Expires: number;
-  }) {
-    const { Key, ContentType, ContentLengthRange, Expires } = params;
-
-    const date = new Date();
-    const dateString = date.toISOString().replace(/[:-]|\.\d{3}/g, '');
-    const dateShort = dateString.slice(0, 8);
-
-    const credential = `${this.accessKeyId}/${dateShort}/${this.region}/s3/aws4_request`;
-    const expiration = new Date(Date.now() + Expires * 1000).toISOString();
-
-    const policy = {
-      expiration,
-      conditions: [
-        { bucket: this.bucket },
-        { key: Key },
-        { 'Content-Type': ContentType },
-        ['content-length-range', ContentLengthRange[0], ContentLengthRange[1]],
-        { 'x-amz-algorithm': 'AWS4-HMAC-SHA256' },
-        { 'x-amz-credential': credential },
-        { 'x-amz-date': dateString },
-      ],
-    };
-
-    const policyBase64 = btoa(JSON.stringify(policy));
-
-    // Create signing key
-    const kDate = await this.hmac(`AWS4${this.secretAccessKey}`, dateShort);
-    const kRegion = await this.hmac(kDate, this.region);
-    const kService = await this.hmac(kRegion, 's3');
-    const kSigning = await this.hmac(kService, 'aws4_request');
-
-    // Sign the policy
-    const signature = await this.hmac(kSigning, policyBase64);
-    const signatureHex = Array.from(new Uint8Array(signature))
-      .map((b) => b.toString(16).padStart(2, '0'))
-      .join('');
-
-    return {
-      url: `https://${this.bucket}.s3.${this.region}.amazonaws.com/`,
-      fields: {
-        key: Key,
-        'Content-Type': ContentType,
-        'x-amz-algorithm': 'AWS4-HMAC-SHA256',
-        'x-amz-credential': credential,
-        'x-amz-date': dateString,
-        policy: policyBase64,
-        'x-amz-signature': signatureHex,
-      },
-    };
-  }
-
-  private async hmac(key: string | ArrayBuffer, data: string): Promise<ArrayBuffer> {
-    const cryptoKey = await crypto.subtle.importKey(
-      'raw',
-      typeof key === 'string' ? new TextEncoder().encode(key) : key,
-      { name: 'HMAC', hash: 'SHA-256' },
-      false,
-      ['sign']
-    );
-    return await crypto.subtle.sign('HMAC', cryptoKey, new TextEncoder().encode(data));
-  }
-}
-
-serve(async (req: Request) => {
+Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
@@ -119,49 +30,65 @@ serve(async (req: Request) => {
       });
     }
 
-    if (req.method === 'POST') {
-      const { fileName, fileType, fileSize, folderId }: UploadRequest = await req.json();
+    const body = await req.json();
+    const region = Deno.env.get('AWS_REGION') ?? 'us-east-1';
+    const bucket = Deno.env.get('AWS_S3_BUCKET') ?? '';
+    const accessKeyId = Deno.env.get('AWS_ACCESS_KEY_ID') ?? '';
+    const secretAccessKey = Deno.env.get('AWS_SECRET_ACCESS_KEY') ?? '';
 
-      // Max file size: 5GB
-      const maxFileSize = 5 * 1024 * 1024 * 1024;
+    if (!bucket || !accessKeyId || !secretAccessKey) {
+      return new Response(JSON.stringify({ error: 'AWS configuration missing' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const s3Client = new S3Client({
+      endPoint: `https://s3.${region}.amazonaws.com`,
+      region,
+      accessKey: accessKeyId,
+      secretKey: secretAccessKey,
+      bucket,
+    });
+
+    // Mode 1: Get Presigned URL for upload
+    if (body.action === 'get-presigned-url') {
+      const { fileName, fileType, fileSize } = body;
+      const maxFileSize = 5 * 1024 * 1024 * 1024; // 5GB
 
       if (fileSize > maxFileSize) {
-        return new Response(
-          JSON.stringify({
-            error: 'File size exceeds 5GB limit.',
-          }),
-          { status: 413, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+        return new Response(JSON.stringify({ error: 'File size exceeds 5GB limit.' }), {
+          status: 413,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
       }
 
       const timestamp = Date.now();
       const randomSuffix = Math.random().toString(36).substring(2, 15);
       const s3Key = `${user.id}/${timestamp}-${randomSuffix}-${fileName}`;
 
-      const region = Deno.env.get('AWS_REGION') ?? 'us-east-1';
-      const bucket = Deno.env.get('AWS_S3_BUCKET') ?? '';
-      const accessKeyId = Deno.env.get('AWS_ACCESS_KEY_ID') ?? '';
-      const secretAccessKey = Deno.env.get('AWS_SECRET_ACCESS_KEY') ?? '';
-
-      if (!bucket || !accessKeyId || !secretAccessKey) {
-        return new Response(JSON.stringify({ error: 'AWS configuration missing' }), {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-
-      // Create S3 client
-      const s3Client = new S3Client(accessKeyId, secretAccessKey, region, bucket);
-
-      // Generate presigned POST
-      const presignedPost = await s3Client.createPresignedPost({
-        Key: s3Key,
-        ContentType: fileType,
-        ContentLengthRange: [0, maxFileSize],
-        Expires: 3600, // 1 hour
+      const { url, fields } = await s3Client.presignedPostObject(s3Key, {
+        expirySeconds: 3600, // 1 hour
+        fields: {
+          'Content-Type': fileType,
+        },
+        conditions: [['content-length-range', 0, maxFileSize]],
       });
 
-      // Insert file record
+      return new Response(
+        JSON.stringify({
+          uploadUrl: url,
+          s3Key,
+          formData: fields,
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Mode 2: Create File Record
+    if (body.action === 'create-file-record') {
+      const { s3Key, fileName, fileType, fileSize, folderId } = body;
+
       const { data: fileRecord, error: dbError } = await supabaseClient
         .from('files')
         .insert({
@@ -180,22 +107,69 @@ serve(async (req: Request) => {
       if (dbError) {
         return new Response(
           JSON.stringify({ error: 'Failed to create file record', details: dbError }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
         );
       }
 
-      return new Response(
-        JSON.stringify({
-          uploadUrl: presignedPost.url,
-          fileId: fileRecord.id,
-          formData: presignedPost.fields,
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return new Response(JSON.stringify({ fileRecord }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-      status: 405,
+    // Mode 3: Get Signed URL for download/preview
+    if (body.action === 'get-signed-url') {
+      const { s3Key } = body;
+      if (!s3Key) {
+        return new Response(JSON.stringify({ error: 's3Key is required' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const signedUrl = await s3Client.presignedGetObject(s3Key, {
+        expirySeconds: 3600, // Expires in 1 hour
+      });
+
+      return new Response(JSON.stringify({ signedUrl }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Mode 4: Delete File from S3
+    if (body.action === 'delete-file') {
+      const { s3Key } = body;
+      if (!s3Key) {
+        return new Response(JSON.stringify({ error: 's3Key is required' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      try {
+        await s3Client.deleteObject(s3Key);
+        return new Response(JSON.stringify({ success: true, message: 'File deleted from S3' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      } catch (s3Error) {
+        console.error('S3 Deletion Error:', s3Error);
+        return new Response(
+          JSON.stringify({
+            error: 'Failed to delete file from S3',
+            details: (s3Error as Error).message,
+          }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        );
+      }
+    }
+
+    return new Response(JSON.stringify({ error: 'Invalid action' }), {
+      status: 400,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
