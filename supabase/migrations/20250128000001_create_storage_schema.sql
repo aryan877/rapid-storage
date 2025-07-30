@@ -34,6 +34,10 @@ CREATE INDEX idx_folders_parent_id ON folders(parent_id);
 CREATE INDEX idx_files_user_id ON files(user_id);
 CREATE INDEX idx_files_folder_id ON files(folder_id);
 
+-- Create composite indexes for cursor-based pagination
+CREATE INDEX idx_folders_user_id_created_at_id ON folders(user_id, created_at DESC, id DESC);
+CREATE INDEX idx_files_user_id_created_at_id ON files(user_id, created_at DESC, id DESC);
+
 -- Function to update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$

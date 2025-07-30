@@ -70,7 +70,6 @@ export type Database = {
           id: string
           name: string
           parent_id: string | null
-          path: string | null
           updated_at: string | null
           user_id: string
         }
@@ -79,7 +78,6 @@ export type Database = {
           id?: string
           name: string
           parent_id?: string | null
-          path?: string | null
           updated_at?: string | null
           user_id: string
         }
@@ -88,7 +86,6 @@ export type Database = {
           id?: string
           name?: string
           parent_id?: string | null
-          path?: string | null
           updated_at?: string | null
           user_id?: string
         }
@@ -107,7 +104,46 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      uuid_generate_v1: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      uuid_generate_v1mc: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      uuid_generate_v3: {
+        Args: { namespace: string; name: string }
+        Returns: string
+      }
+      uuid_generate_v4: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      uuid_generate_v5: {
+        Args: { namespace: string; name: string }
+        Returns: string
+      }
+      uuid_nil: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      uuid_ns_dns: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      uuid_ns_oid: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      uuid_ns_url: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      uuid_ns_x500: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never

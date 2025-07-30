@@ -129,13 +129,13 @@ const FileManagerScreen: React.FC<FileManagerScreenProps> = ({ navigation }) => 
     isFetchingNextPage: isFetchingNextFolders,
   } = useInfiniteQuery({
     queryKey: ['folders', currentFolderId, debouncedSearchQuery],
-    queryFn: async ({ pageParam = 0 }) => {
+    queryFn: async ({ pageParam }: { pageParam?: { created_at: string; id: string } }) => {
       let query = supabase
         .from('folders')
-        .select('*', { count: 'exact' })
+        .select('*')
         .eq('user_id', user?.id)
-        .order('name')
-        .range(pageParam * PAGE_SIZE, (pageParam + 1) * PAGE_SIZE - 1);
+        .order('created_at', { ascending: false })
+        .order('id', { ascending: false });
 
       if (debouncedSearchQuery) {
         query = query.ilike('name', `%${debouncedSearchQuery}%`);
@@ -146,15 +146,27 @@ const FileManagerScreen: React.FC<FileManagerScreenProps> = ({ navigation }) => 
       } else {
         query = query.eq('parent_id', currentFolderId);
       }
-      const { data, error, count } = await query;
+
+      if (pageParam?.created_at) {
+        query = query.lt('created_at', pageParam.created_at);
+      }
+
+      const { data, error } = await query.limit(PAGE_SIZE);
+
       if (error) throw error;
-      return { data: data as Folder[], count };
+      return { data: data as Folder[] };
     },
-    initialPageParam: 0,
-    getNextPageParam: (lastPage, allPages) => {
-      const loadedCount = allPages.flatMap((p) => p.data).length;
-      if (lastPage.count && loadedCount < lastPage.count) {
-        return allPages.length;
+    initialPageParam: undefined,
+    getNextPageParam: (lastPage) => {
+      if (!lastPage.data || lastPage.data.length < PAGE_SIZE) {
+        return undefined;
+      }
+      const lastItem = lastPage.data[lastPage.data.length - 1];
+      if (lastItem?.created_at) {
+        return {
+          created_at: lastItem.created_at,
+          id: lastItem.id,
+        };
       }
       return undefined;
     },
@@ -170,13 +182,13 @@ const FileManagerScreen: React.FC<FileManagerScreenProps> = ({ navigation }) => 
     isFetchingNextPage: isFetchingNextFiles,
   } = useInfiniteQuery({
     queryKey: ['files', currentFolderId, debouncedSearchQuery],
-    queryFn: async ({ pageParam = 0 }) => {
+    queryFn: async ({ pageParam }: { pageParam?: { created_at: string; id: string } }) => {
       let query = supabase
         .from('files')
-        .select('*', { count: 'exact' })
+        .select('*')
         .eq('user_id', user?.id)
-        .order('name')
-        .range(pageParam * PAGE_SIZE, (pageParam + 1) * PAGE_SIZE - 1);
+        .order('created_at', { ascending: false })
+        .order('id', { ascending: false });
 
       if (debouncedSearchQuery) {
         query = query.ilike('name', `%${debouncedSearchQuery}%`);
@@ -187,16 +199,27 @@ const FileManagerScreen: React.FC<FileManagerScreenProps> = ({ navigation }) => 
       } else {
         query = query.eq('folder_id', currentFolderId);
       }
-      const { data, error, count } = await query;
+
+      if (pageParam?.created_at) {
+        query = query.lt('created_at', pageParam.created_at);
+      }
+
+      const { data, error } = await query.limit(PAGE_SIZE);
 
       if (error) throw error;
-      return { data: data as File[], count };
+      return { data: data as File[] };
     },
-    initialPageParam: 0,
-    getNextPageParam: (lastPage, allPages) => {
-      const loadedCount = allPages.flatMap((p) => p.data).length;
-      if (lastPage.count && loadedCount < lastPage.count) {
-        return allPages.length;
+    initialPageParam: undefined,
+    getNextPageParam: (lastPage) => {
+      if (!lastPage.data || lastPage.data.length < PAGE_SIZE) {
+        return undefined;
+      }
+      const lastItem = lastPage.data[lastPage.data.length - 1];
+      if (lastItem?.created_at) {
+        return {
+          created_at: lastItem.created_at,
+          id: lastItem.id,
+        };
       }
       return undefined;
     },
@@ -253,8 +276,6 @@ const FileManagerScreen: React.FC<FileManagerScreenProps> = ({ navigation }) => 
           },
         });
         if (s3Error) {
-          // Note: You might want to handle this case more gracefully,
-          // e.g., by re-inserting the DB record or logging for manual cleanup.
           console.error('S3 deletion failed, but DB record was deleted:', s3Error);
           throw new Error(`S3 deletion failed: ${s3Error.message}`);
         }

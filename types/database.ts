@@ -1,7 +1,7 @@
 import { Tables } from './supabase';
 
-export type Folder = Tables<'folders'>;
-export type File = Tables<'files'>;
+export type Folder = Tables<'folders'> & { type: 'folder' };
+export type File = Tables<'files'> & { type: 'file' };
 
 export interface FileWithFolder extends File {
   folder?: Folder;
