@@ -262,16 +262,16 @@ const ProfileScreen: React.FC = () => {
               <Pressable
                 onPress={() => {
                   // Open email client with pre-filled email
-                  const email = 'aryankumar877@gmail.com';
-                  const subject = "Rita's Storage - Support Request";
-                  const body = "Hi, I need help with Rita's Storage app.";
+                  const email = 'support@rapidstorage.com';
+                  const subject = 'Rapid Storage - Support Request';
+                  const body = 'Hi, I need help with Rapid Storage app.';
                   const mailtoUrl = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 
                   import('expo-linking').then(({ default: Linking }) => {
                     Linking.openURL(mailtoUrl).catch(() => {
                       Alert.alert(
                         'Email not available',
-                        'Please send an email to aryankumar877@gmail.com for support.'
+                        'Please send an email to support@rapidstorage.com for support.'
                       );
                     });
                   });
@@ -285,7 +285,7 @@ const ProfileScreen: React.FC = () => {
                     Contact Support
                   </Text>
                   <Text className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
-                    aryankumar877@gmail.com
+                    support@rapidstorage.com
                   </Text>
                 </View>
                 <Ionicons name="chevron-forward" size={20} color="#9ca3af" />

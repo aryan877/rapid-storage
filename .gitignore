@@ -9,7 +9,6 @@ npm-debug.*
 *.mobileprovision
 *.aab
 *.apk
-rita-storage-signed-v1.0.0.aab
 *.orig.*
 web-build/
 .env

@@ -1,5 +1,5 @@
 {
-  "name": "ritas-storage",
+  "name": "rapid-storage",
   "version": "1.0.0",
   "scripts": {
     "android": "expo run:android",

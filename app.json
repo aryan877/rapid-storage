@@ -1,9 +1,9 @@
 {
   "expo": {
-    "name": "Rita's Storage",
-    "slug": "ritas-storage",
+    "name": "Rapid Storage",
+    "slug": "rapid-storage",
     "version": "1.0.0",
-    "scheme": "com.ritasstorage",
+    "scheme": "com.rapidstorage",
     "web": {
       "favicon": "./assets/favicon.png"
     },
@@ -22,7 +22,7 @@
     "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.ritasstorage.app",
+      "bundleIdentifier": "com.rapidstorage.app",
       "infoPlist": {}
     },
     "android": {
@@ -30,21 +30,21 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.ritasstorage.app",
+      "package": "com.rapidstorage.app",
       "permissions": ["CAMERA", "READ_EXTERNAL_STORAGE", "WRITE_EXTERNAL_STORAGE"]
     },
     "extra": {
       "eas": {
-        "projectId": "9f21a7fb-00f3-48d5-8937-00c635c3a713"
+        "projectId": "5a02ee99-4af3-4a4f-bb90-dce3201be2b0"
       }
     },
     "updates": {
-      "url": "https://u.expo.dev/9f21a7fb-00f3-48d5-8937-00c635c3a713",
+      "url": "https://u.expo.dev/5a02ee99-4af3-4a4f-bb90-dce3201be2b0",
       "enabled": true,
       "fallbackToCacheTimeout": 0,
       "checkAutomatically": "ON_LOAD"
     },
     "runtimeVersion": "1.0.0",
-    "owner": ""
+    "owner": "aryankumar877"
   }
 }

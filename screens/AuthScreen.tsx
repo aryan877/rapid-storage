@@ -32,7 +32,7 @@ const AuthScreen: React.FC = () => {
               </View>
 
               <Text className="mb-3 text-center text-5xl font-black tracking-tight text-gray-900 dark:text-white">
-                Rita&apos;s Storage
+                Rapid Storage
               </Text>
               <Text className="mb-2 text-center text-xl font-medium text-orange-600 dark:text-orange-400">
                 Cloud Storage Reimagined
