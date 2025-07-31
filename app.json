@@ -35,9 +35,16 @@
     },
     "extra": {
       "eas": {
-        "projectId": ""
+        "projectId": "9f21a7fb-00f3-48d5-8937-00c635c3a713"
       }
     },
+    "updates": {
+      "url": "https://u.expo.dev/9f21a7fb-00f3-48d5-8937-00c635c3a713",
+      "enabled": true,
+      "fallbackToCacheTimeout": 0,
+      "checkAutomatically": "ON_LOAD"
+    },
+    "runtimeVersion": "1.0.0",
     "owner": ""
   }
 }
