@@ -2,7 +2,7 @@
   "expo": {
     "name": "Rapid Storage",
     "slug": "rapid-storage",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "scheme": "com.rapidstorage",
     "web": {
       "favicon": "./assets/favicon.png"
@@ -31,7 +31,8 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.rapidstorage.app",
-      "permissions": ["READ_EXTERNAL_STORAGE"]
+      "permissions": ["READ_EXTERNAL_STORAGE"],
+      "blockedPermissions": ["android.permission.CAMERA", "android.permission.RECORD_AUDIO"]
     },
     "extra": {
       "eas": {
@@ -44,7 +45,7 @@
       "fallbackToCacheTimeout": 0,
       "checkAutomatically": "ON_LOAD"
     },
-    "runtimeVersion": "1.0.0",
+    "runtimeVersion": "1.0.1",
     "owner": "aryankumar877"
   }
 }

@@ -262,7 +262,7 @@ const ProfileScreen: React.FC = () => {
               <Pressable
                 onPress={() => {
                   // Open email client with pre-filled email
-                  const email = 'support@rapidstorage.com';
+                  const email = 'support@rapidstorage.site';
                   const subject = 'Rapid Storage - Support Request';
                   const body = 'Hi, I need help with Rapid Storage app.';
                   const mailtoUrl = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
@@ -271,7 +271,7 @@ const ProfileScreen: React.FC = () => {
                     Linking.openURL(mailtoUrl).catch(() => {
                       Alert.alert(
                         'Email not available',
-                        'Please send an email to support@rapidstorage.com for support.'
+                        'Please send an email to support@rapidstorage.site for support.'
                       );
                     });
                   });
@@ -285,7 +285,7 @@ const ProfileScreen: React.FC = () => {
                     Contact Support
                   </Text>
                   <Text className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
-                    support@rapidstorage.com
+                    support@rapidstorage.site
                   </Text>
                 </View>
                 <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
