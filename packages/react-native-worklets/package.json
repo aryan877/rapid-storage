@@ -1,0 +1,12 @@
+{
+  "name": "react-native-worklets",
+  "version": "0.0.0",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./plugin": "./plugin.js"
+  },
+  "peerDependencies": {
+    "react-native-reanimated": "*"
+  }
+}

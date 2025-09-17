@@ -1,10 +1,20 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import React, { useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Pressable, Text, TextInput, View } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Pressable,
+  Text,
+  TextInput,
+  View,
+  useColorScheme,
+} from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabase';
+import { useCreateFolderMutation, usePickerFoldersQuery } from '../queries';
 import { Folder } from '../types/database';
+import Button from './Button';
+
 
 interface FolderPickerProps {
   onSelectFolder: (folderId: string | null) => void;
@@ -20,7 +30,9 @@ export const FolderPicker: React.FC<FolderPickerProps> = ({
   itemType,
 }) => {
   const { user } = useAuth();
-  const queryClient = useQueryClient();
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
+  const iconTint = isDark ? '#e5e7eb' : '#111827';
   const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
   const [path, setPath] = useState<{ id: string | null; name: string }[]>([
     { id: null, name: 'My Drive' },
@@ -28,51 +40,34 @@ export const FolderPicker: React.FC<FolderPickerProps> = ({
   const [isCreating, setIsCreating] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
 
-  const { data: folders = [], isLoading } = useQuery({
-    queryKey: ['picker-folders', activeFolderId],
-    queryFn: async () => {
-      let query = supabase.from('folders').select('*').eq('user_id', user!.id).order('name');
+  const {
+    data: foldersData,
+    isLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = usePickerFoldersQuery(user?.id, activeFolderId);
 
-      if (activeFolderId === null) {
-        query = query.is('parent_id', null);
-      } else {
-        query = query.eq('parent_id', activeFolderId);
-      }
+  const folders = useMemo(
+    () => foldersData?.pages.flatMap((page) => page.data) ?? [],
+    [foldersData]
+  );
 
-      const { data, error } = await query;
-      if (error) throw error;
-      return data as Folder[];
-    },
-    enabled: !!user,
-  });
+  const createFolderMutation = useCreateFolderMutation();
 
-  const createFolderMutation = useMutation({
-    mutationFn: async (name: string) => {
-      const { data, error } = await supabase
-        .from('folders')
-        .insert({
-          name: name.trim(),
-          parent_id: activeFolderId,
-          user_id: user?.id!,
-        })
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['picker-folders', activeFolderId] });
+  const handleCreateFolder = async () => {
+    if (!newFolderName.trim() || !user?.id) return;
+
+    try {
+      await createFolderMutation.mutateAsync({
+        name: newFolderName,
+        parentId: activeFolderId,
+        userId: user.id,
+      });
       setNewFolderName('');
       setIsCreating(false);
-    },
-    onError: (error) => {
+    } catch (error) {
       Alert.alert('Error', `Failed to create folder: ${(error as Error).message}`);
-    },
-  });
-
-  const handleCreateFolder = () => {
-    if (newFolderName.trim()) {
-      createFolderMutation.mutate(newFolderName);
     }
   };
 
@@ -93,60 +88,72 @@ export const FolderPicker: React.FC<FolderPickerProps> = ({
     }
   };
 
-  const filteredFolders = folders.filter((folder) => {
+  const filteredFolders = folders.filter((folder: Folder) => {
     if (itemType === 'folder' && folder.id === movingItemId) {
       return false; // Prevent moving a folder into itself
     }
     return true;
   });
 
+  const loadMore = () => {
+    if (hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
+    }
+  };
+
   const renderItem = ({ item }: { item: Folder }) => (
     <Pressable
       onPress={() => handleNavigate(item)}
-      className="my-1 flex-row items-center rounded-lg bg-gray-50 p-3 dark:bg-gray-800">
-      <Ionicons name="folder-outline" size={24} color="#3b82f6" style={{ marginRight: 12 }} />
-      <Text className="flex-1 text-base text-gray-800 dark:text-gray-200">{item.name}</Text>
-      <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
+      className="my-1 flex-row items-center rounded-2xl border border-gray-200/70 bg-white/90 px-4 py-3 dark:border-white/10 dark:bg-white/5">
+      <Ionicons name="folder-outline" size={20} color={iconTint} style={{ marginRight: 12 }} />
+      <Text className="flex-1 text-sm font-medium text-gray-800 dark:text-gray-200">{item.name}</Text>
+      <Ionicons name="chevron-forward" size={16} color="#9ca3af" />
     </Pressable>
   );
 
   return (
     <View className="flex-1">
-      <View className="border-b border-gray-200 p-3 dark:border-gray-700">
-        <View className="mb-3 flex-row flex-wrap items-center">
-          <Pressable onPress={() => handleBreadcrumbNavigate(0)}>
-            <Ionicons name="home-outline" size={20} color="#3b82f6" />
+      <View className="border-b border-gray-200/60 px-4 py-4 dark:border-white/10">
+        <View className="flex-row flex-wrap items-center">
+          <Pressable
+            onPress={() => handleBreadcrumbNavigate(0)}
+            className="mr-2 rounded-full border border-gray-200/70 p-2 dark:border-white/10">
+            <Ionicons name="home-outline" size={16} color={iconTint} />
           </Pressable>
           {path.slice(1).map((p, i) => (
-            <View key={p.id} className="flex-row items-center">
-              <Ionicons
-                name="chevron-forward"
-                size={16}
-                color="#9ca3af"
-                style={{ marginHorizontal: 4 }}
-              />
+            <View key={p.id ?? i} className="flex-row items-center">
+              <Text className="mx-2 text-sm text-gray-400">/</Text>
               <Pressable onPress={() => handleBreadcrumbNavigate(i + 1)}>
                 <Text
-                  className={`text-base ${i === path.length - 2 ? 'font-semibold text-blue-600' : 'text-gray-500'}`}>
+                  className={`text-sm ${
+                    i === path.length - 2 ? 'font-medium text-gray-900 dark:text-white' : 'text-gray-500'
+                  }`}>
                   {p.name}
                 </Text>
               </Pressable>
             </View>
           ))}
         </View>
-        <View className="flex-row items-center justify-between">
-          <Pressable
-            onPress={() => setIsCreating(!isCreating)}
-            className="flex-row items-center self-start rounded-md bg-blue-50 px-3 py-2 dark:bg-blue-900/50">
-            <Ionicons name={isCreating ? 'close' : 'add'} size={20} color="#3b82f6" />
-            <Text className="ml-2 font-medium text-blue-600">New Folder</Text>
-          </Pressable>
+        <View className="mt-4 flex-row items-center justify-between">
+          <Button
+            variant="secondary"
+            title={isCreating ? 'Cancel' : 'New folder'}
+            onPress={() => {
+              if (isCreating) {
+                setIsCreating(false);
+                setNewFolderName('');
+              } else {
+                setIsCreating(true);
+              }
+            }}
+            leftIcon={<Ionicons name={isCreating ? 'close' : 'add'} size={16} color={iconTint} />}
+          />
           {path.length > 1 && (
             <Pressable
               onPress={handleGoBack}
-              className="flex-row items-center self-start rounded-md bg-gray-100 px-3 py-2 dark:bg-gray-800">
-              <Ionicons name="arrow-back" size={20} color="#6b7280" />
-              <Text className="ml-2 font-medium text-gray-700 dark:text-gray-300">Back</Text>
+              className="flex-row items-center rounded-full border border-gray-200/70 px-3 py-1.5 dark:border-white/10">
+              <Ionicons name="arrow-back" size={16} color={iconTint} />
+              <Text className="ml-2 text-sm text-gray-600 dark:text-gray-300">Up one level</Text>
             </Pressable>
           )}
         </View>
@@ -156,53 +163,52 @@ export const FolderPicker: React.FC<FolderPickerProps> = ({
               value={newFolderName}
               onChangeText={setNewFolderName}
               placeholder="Folder name"
-              className="flex-1 rounded-md border border-gray-300 bg-white px-3 py-2 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+              className="flex-1 rounded-xl border border-gray-200/70 bg-white px-3 py-2 text-sm text-gray-900 dark:border-white/10 dark:bg-white/10 dark:text-white"
               autoFocus
             />
-            <Pressable
+            <Button
+              title="Create"
               onPress={handleCreateFolder}
-              disabled={createFolderMutation.isPending}
-              className="items-center justify-center rounded-md bg-blue-600 px-4 py-2">
-              {createFolderMutation.isPending ? (
-                <ActivityIndicator size="small" color="white" />
-              ) : (
-                <Text className="font-semibold text-white">Create</Text>
-              )}
-            </Pressable>
+              loading={createFolderMutation.isPending}
+            />
           </View>
         )}
       </View>
 
       {isLoading ? (
-        <ActivityIndicator size="large" color="#3b82f6" style={{ marginTop: 20 }} />
+        <ActivityIndicator size="small" color={iconTint} style={{ marginTop: 20 }} />
       ) : (
         <FlatList
           data={filteredFolders}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
           contentContainerStyle={{ paddingHorizontal: 12, paddingVertical: 8 }}
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={
+            isFetchingNextPage ? (
+              <ActivityIndicator size="small" color={iconTint} style={{ marginVertical: 20 }} />
+            ) : null
+          }
           ListEmptyComponent={
-            <View className="items-center justify-center p-8">
-              <Ionicons name="folder-open-outline" size={48} color="#9ca3af" />
-              <Text className="mt-4 text-gray-500">No sub-folders here</Text>
-            </View>
+            !isLoading && filteredFolders.length === 0 ? (
+              <View className="items-center justify-center p-8">
+                <View className="mb-4 h-14 w-14 items-center justify-center rounded-full border border-dashed border-gray-300 dark:border-white/15">
+                  <Ionicons name="folder-open-outline" size={22} color={iconTint} />
+                </View>
+                <Text className="text-sm text-gray-500 dark:text-gray-400">No sub-folders here</Text>
+              </View>
+            ) : null
           }
         />
       )}
 
-      <View className="border-t border-gray-200 p-4 dark:border-gray-700">
-        <Pressable
+      <View className="border-t border-gray-200/60 px-4 py-4 dark:border-white/10">
+        <Button
           onPress={() => onSelectFolder(activeFolderId)}
           disabled={activeFolderId === currentFolderId}
-          className={`rounded-lg py-3 ${
-            activeFolderId === currentFolderId
-              ? 'bg-gray-300 dark:bg-gray-700'
-              : 'bg-blue-600 active:bg-blue-700'
-          }`}>
-          <Text className="text-center text-lg font-bold text-white">
-            Move to {path[path.length - 1].name}
-          </Text>
-        </Pressable>
+          title={`Move to ${path[path.length - 1].name}`}
+        />
       </View>
     </View>
   );

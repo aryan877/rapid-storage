@@ -5,29 +5,33 @@ import {
   Alert,
   Image,
   Modal,
-  Pressable,
   RefreshControl,
   ScrollView,
   Text,
   TouchableOpacity,
   View,
+  useColorScheme,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Button from '../components/Button';
+import Card from '../components/Card';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import type { File } from '../types/database';
 import { formatFileSize } from '../types/database';
 
 interface StorageStats {
   totalFiles: number;
   totalFolders: number;
   totalSize: number;
-  recentFiles: File[];
 }
 
 const ProfileScreen: React.FC = () => {
   const { user: authUser, signOut } = useAuth();
   const [showSignOutModal, setShowSignOutModal] = useState(false);
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
+  const containerClass = `flex-1 ${isDark ? 'bg-black' : 'bg-[#f7f8fb]'}`;
+  const iconTint = isDark ? '#e5e7eb' : '#111827';
 
   const {
     data: storageStats,
@@ -56,16 +60,10 @@ const ProfileScreen: React.FC = () => {
       if (foldersError) throw foldersError;
 
       const totalSize = files?.reduce((acc, file) => acc + (file.size_bytes || 0), 0) || 0;
-      const recentFiles =
-        files
-          ?.sort((a, b) => new Date(b.created_at!).getTime() - new Date(a.created_at!).getTime())
-          .slice(0, 5) || [];
-
       return {
         totalFiles: files?.length || 0,
         totalFolders: folders?.length || 0,
         totalSize,
-        recentFiles: recentFiles as File[],
       };
     },
     enabled: !!authUser,
@@ -90,17 +88,17 @@ const ProfileScreen: React.FC = () => {
 
   if (!authUser) {
     return (
-      <SafeAreaView className="flex-1 bg-gray-50 dark:bg-black">
+      <SafeAreaView className={containerClass}>
         <View className="flex-1 items-center justify-center px-8">
           <View className="items-center">
-            <View className="mb-8 h-24 w-24 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
-              <Ionicons name="person-outline" size={48} color="#6b7280" />
+            <View className="mb-6 h-20 w-20 items-center justify-center rounded-full border border-dashed border-gray-300 dark:border-white/15">
+              <Ionicons name="person-outline" size={32} color={iconTint} />
             </View>
-            <Text className="mb-3 text-3xl font-bold text-gray-900 dark:text-white">
-              Please Log In
+            <Text className="mb-2 text-2xl font-semibold text-gray-900 dark:text-white">
+              Please sign in
             </Text>
-            <Text className="mb-8 max-w-sm text-center text-base text-gray-600 dark:text-gray-400">
-              You need to be logged in to view your profile and storage stats.
+            <Text className="max-w-sm text-center text-sm text-gray-500 dark:text-gray-400">
+              Log in to review your storage activity and account details.
             </Text>
           </View>
         </View>
@@ -126,179 +124,105 @@ const ProfileScreen: React.FC = () => {
 
   return (
     <>
-      <SafeAreaView className="flex-1 bg-gray-50 dark:bg-black">
+      <SafeAreaView className={containerClass}>
         <ScrollView
           className="flex-1"
-          refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} />}
-          contentContainerStyle={{ paddingBottom: 32 }}>
-          {/* Header with gradient background */}
-          <View className="relative overflow-hidden bg-blue-600 px-8 pb-12 pt-8">
-            {/* Profile Info */}
+          refreshControl={
+            <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={iconTint} />
+          }
+          contentContainerStyle={{ paddingBottom: 40 }}>
+          <View className="px-6 pt-8">
             <View className="items-center">
               {avatarUrl ? (
-                <View className="mb-6 overflow-hidden rounded-full border-4 border-white/20 shadow-xl">
-                  <Image source={{ uri: avatarUrl }} className="h-36 w-36" />
+                <View className="overflow-hidden rounded-3xl border border-gray-200/70 dark:border-white/10">
+                  <Image source={{ uri: avatarUrl }} className="h-28 w-28" />
                 </View>
               ) : (
-                <View className="mb-6 h-36 w-36 items-center justify-center rounded-full border-4 border-white/20 bg-white shadow-xl">
-                  <Text className="text-5xl font-bold text-blue-600">{initials}</Text>
+                <View className="h-28 w-28 items-center justify-center rounded-3xl border border-dashed border-gray-300 bg-white/80 dark:border-white/15 dark:bg-white/10">
+                  <Text className="text-2xl font-semibold text-gray-900 dark:text-white">{initials}</Text>
                 </View>
               )}
-
-              <Text className="mb-2 text-center text-3xl font-bold text-white">
+              <Text className="mt-6 text-2xl font-semibold text-gray-900 dark:text-white">
                 {displayName || 'User'}
               </Text>
-
               {displayEmail && (
-                <Text className="text-center text-base text-white opacity-90">{displayEmail}</Text>
+                <Text className="mt-1 text-sm text-gray-500 dark:text-gray-400">{displayEmail}</Text>
               )}
             </View>
-          </View>
 
-          <View className="px-6 py-8">
-            {/* Storage Stats */}
-            <View className="mb-8">
-              <Text className="mb-6 text-2xl font-bold text-gray-900 dark:text-white">
-                Storage Overview
+            <Card variant="default" style={{ marginTop: 32 }}>
+              <Text className="text-xs uppercase tracking-[0.35em] text-gray-400 dark:text-gray-500">
+                Storage summary
               </Text>
-
               {isLoading ? (
-                <View className="h-32 items-center justify-center">
-                  <Text className="text-gray-500 dark:text-gray-400">Loading storage stats...</Text>
+                <View className="h-20 items-center justify-center">
+                  <Text className="text-sm text-gray-500 dark:text-gray-400">Loading stats…</Text>
                 </View>
               ) : (
-                <View className="flex-row gap-4">
-                  <View className="flex-1 overflow-hidden rounded-2xl bg-blue-500 p-5 shadow-sm">
-                    <View className="mb-3 h-12 w-12 items-center justify-center rounded-xl bg-white opacity-20">
-                      <Ionicons name="document" size={24} color="white" />
-                    </View>
-                    <Text className="text-3xl font-bold text-white">
+                <View className="mt-4 gap-4">
+                  <View className="flex-row items-baseline justify-between">
+                    <Text className="text-sm text-gray-500 dark:text-gray-400">Files</Text>
+                    <Text className="text-2xl font-semibold text-gray-900 dark:text-white">
                       {storageStats?.totalFiles.toLocaleString() || 0}
                     </Text>
-                    <Text className="mt-1 text-sm font-medium text-white opacity-80">Files</Text>
                   </View>
-
-                  <View className="flex-1 overflow-hidden rounded-2xl bg-green-500 p-5 shadow-sm">
-                    <View className="mb-3 h-12 w-12 items-center justify-center rounded-xl bg-white opacity-20">
-                      <Ionicons name="folder" size={24} color="white" />
-                    </View>
-                    <Text className="text-3xl font-bold text-white">
+                  <View className="flex-row items-baseline justify-between">
+                    <Text className="text-sm text-gray-500 dark:text-gray-400">Folders</Text>
+                    <Text className="text-2xl font-semibold text-gray-900 dark:text-white">
                       {storageStats?.totalFolders.toLocaleString() || 0}
                     </Text>
-                    <Text className="mt-1 text-sm font-medium text-white opacity-80">Folders</Text>
                   </View>
-
-                  <View className="flex-1 overflow-hidden rounded-2xl bg-purple-500 p-5 shadow-sm">
-                    <View className="mb-3 h-12 w-12 items-center justify-center rounded-xl bg-white opacity-20">
-                      <Ionicons name="cloud" size={24} color="white" />
-                    </View>
-                    <Text className="text-3xl font-bold text-white">
-                      {formatFileSize(storageStats?.totalSize || 0).split(' ')[0]}
-                    </Text>
-                    <Text className="mt-1 text-sm font-medium text-white opacity-80">
-                      {formatFileSize(storageStats?.totalSize || 0).split(' ')[1]}
+                  <View className="flex-row items-baseline justify-between">
+                    <Text className="text-sm text-gray-500 dark:text-gray-400">Space used</Text>
+                    <Text className="text-2xl font-semibold text-gray-900 dark:text-white">
+                      {formatFileSize(storageStats?.totalSize || 0)}
                     </Text>
                   </View>
                 </View>
               )}
-            </View>
-
-            {/* Recent Files */}
-            <View className="mb-8">
-              <View className="mb-6 flex-row items-center justify-between">
-                <Text className="text-2xl font-bold text-gray-900 dark:text-white">
-                  Recent Files
-                </Text>
-                <Ionicons name="time-outline" size={24} color="#6b7280" />
-              </View>
-
-              {isLoading ? (
-                <View className="h-32 items-center justify-center">
-                  <Text className="text-gray-500 dark:text-gray-400">Loading recent files...</Text>
-                </View>
-              ) : storageStats?.recentFiles && storageStats.recentFiles.length > 0 ? (
-                <View className="gap-3">
-                  {storageStats.recentFiles.map((file) => (
-                    <Pressable
-                      key={file.id}
-                      className="overflow-hidden rounded-2xl bg-white p-5 shadow-sm active:scale-[0.98] dark:bg-gray-900">
-                      <View className="flex-row items-center justify-between">
-                        <View className="flex-1">
-                          <Text className="mb-1 text-base font-semibold text-gray-900 dark:text-white">
-                            {file.name}
-                          </Text>
-                          <Text className="text-sm text-gray-500 dark:text-gray-400">
-                            {formatFileSize(file.size_bytes)} • {file.mime_type || 'Unknown type'}
-                          </Text>
-                        </View>
-                        <View className="items-end">
-                          <Text className="text-xs font-medium text-gray-400 dark:text-gray-500">
-                            {new Date(file.created_at!).toLocaleDateString()}
-                          </Text>
-                        </View>
-                      </View>
-                    </Pressable>
-                  ))}
-                </View>
-              ) : (
-                <View className="items-center rounded-2xl bg-gray-100 py-16 dark:bg-gray-900">
-                  <Ionicons name="document-outline" size={48} color="#9ca3af" />
-                  <Text className="mt-4 text-lg font-semibold text-gray-700 dark:text-gray-300">
-                    No Files Yet
-                  </Text>
-                  <Text className="mt-2 text-center text-gray-500 dark:text-gray-400">
-                    Upload your first file to get started!
-                  </Text>
-                </View>
-              )}
-            </View>
-
-            {/* Support Contact */}
-            <View className="mb-8">
-              <Text className="mb-6 text-2xl font-bold text-gray-900 dark:text-white">
-                Need Help?
-              </Text>
-
-              <Pressable
-                onPress={() => {
-                  // Open email client with pre-filled email
-                  const email = 'support@rapidstorage.site';
-                  const subject = 'Rapid Storage - Support Request';
-                  const body = 'Hi, I need help with Rapid Storage app.';
-                  const mailtoUrl = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-
-                  import('expo-linking').then(({ default: Linking }) => {
-                    Linking.openURL(mailtoUrl).catch(() => {
-                      Alert.alert(
-                        'Email not available',
-                        'Please send an email to support@rapidstorage.site for support.'
-                      );
-                    });
-                  });
-                }}
-                className="flex-row items-center rounded-2xl bg-white p-5 shadow-sm active:scale-[0.98] dark:bg-gray-900">
-                <View className="mr-4 h-14 w-14 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-950">
-                  <Ionicons name="mail-outline" size={28} color="#3b82f6" />
+            </Card>
+            <Card variant="default" style={{ marginTop: 24 }}>
+              <View className="flex-row gap-4">
+                <View className="rounded-full border border-gray-200/70 p-3 dark:border-white/10">
+                  <Ionicons name="mail-outline" size={20} color={iconTint} />
                 </View>
                 <View className="flex-1">
-                  <Text className="text-lg font-semibold text-gray-900 dark:text-white">
-                    Contact Support
-                  </Text>
-                  <Text className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
+                  <Text className="text-sm font-semibold text-gray-900 dark:text-white">Need a hand?</Text>
+                  <Text className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                     support@rapidstorage.site
                   </Text>
-                </View>
-                <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
-              </Pressable>
-            </View>
+                  <TouchableOpacity
+                    onPress={() => {
+                      const email = 'support@rapidstorage.site';
+                      const subject = 'Rapid Storage - Support Request';
+                      const body = 'Hi, I need help with Rapid Storage app.';
+                      const mailtoUrl = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 
-            {/* Sign Out */}
-            <TouchableOpacity
-              className="flex-row items-center justify-center rounded-2xl bg-red-500 py-4 shadow-sm active:bg-red-600"
-              onPress={handleSignOut}>
-              <Ionicons name="log-out" size={24} color="white" style={{ marginRight: 8 }} />
-              <Text className="text-lg font-semibold text-white">Sign Out</Text>
-            </TouchableOpacity>
+                      import('expo-linking').then(({ default: Linking }) => {
+                        Linking.openURL(mailtoUrl).catch(() => {
+                          Alert.alert(
+                            'Email not available',
+                            'Please send an email to support@rapidstorage.site for support.'
+                          );
+                        });
+                      });
+                    }}
+                    className="mt-4 self-start">
+                    <Text className="text-sm font-medium text-gray-900 underline dark:text-white">Compose email</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </Card>
+
+            <View className="mt-32">
+              <Button
+                title="Sign out"
+                variant="danger"
+                size="lg"
+                onPress={handleSignOut}
+                leftIcon={<Ionicons name="log-out-outline" size={20} color="#ffffff" />}
+              />
+            </View>
           </View>
         </ScrollView>
       </SafeAreaView>
@@ -312,37 +236,30 @@ const ProfileScreen: React.FC = () => {
         <View
           className="flex-1 items-center justify-center px-6"
           style={{ backgroundColor: 'rgba(0, 0, 0, 0.6)' }}>
-          <View className="w-full max-w-sm overflow-hidden rounded-3xl bg-white shadow-xl dark:bg-gray-900">
-            <View className="p-8">
-              <View className="mb-6 items-center">
-                <View className="mb-4 h-20 w-20 items-center justify-center rounded-full bg-red-100 dark:bg-red-950">
-                  <Ionicons name="log-out" size={36} color="#ef4444" />
-                </View>
-                <Text className="mb-2 text-2xl font-bold text-gray-900 dark:text-white">
-                  Sign Out?
-                </Text>
-                <Text className="text-center text-base text-gray-600 dark:text-gray-400">
-                  Are you sure you want to sign out of your account?
-                </Text>
+          <View className="w-full max-w-sm rounded-3xl border border-gray-200/70 bg-white/95 p-6 dark:border-white/10 dark:bg-white/5">
+            <View className="items-center">
+              <View className="mb-4 h-16 w-16 items-center justify-center rounded-full border border-dashed border-rose-300 dark:border-rose-400/40">
+                <Ionicons name="alert-circle-outline" size={28} color="#f87171" />
               </View>
+              <Text className="text-lg font-semibold text-gray-900 dark:text-white">Sign out?</Text>
+              <Text className="mt-2 text-center text-sm text-gray-500 dark:text-gray-400">
+                You can always sign back in later to continue working.
+              </Text>
+            </View>
 
-              <View className="gap-3">
-                <TouchableOpacity
-                  className="rounded-xl bg-red-500 py-4 active:bg-red-600"
-                  onPress={confirmSignOut}>
-                  <Text className="text-center text-base font-semibold text-white">
-                    Yes, Sign Out
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  className="rounded-xl border border-gray-200 bg-white py-4 active:bg-gray-50 dark:border-gray-700 dark:bg-gray-800"
-                  onPress={cancelSignOut}>
-                  <Text className="text-center text-base font-semibold text-gray-700 dark:text-gray-300">
-                    Cancel
-                  </Text>
-                </TouchableOpacity>
-              </View>
+            <View className="mt-6 flex-row" style={{ gap: 12 }}>
+              <Button
+                variant="secondary"
+                title="Stay signed in"
+                className="flex-1"
+                onPress={cancelSignOut}
+              />
+              <Button
+                variant="danger"
+                title="Sign out"
+                className="flex-1"
+                onPress={confirmSignOut}
+              />
             </View>
           </View>
         </View>

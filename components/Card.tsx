@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, ViewProps } from 'react-native';
+import { View, ViewProps, useColorScheme } from 'react-native';
 
 interface CardProps extends ViewProps {
   children: React.ReactNode;
@@ -7,29 +7,30 @@ interface CardProps extends ViewProps {
 }
 
 export default function Card({ children, variant = 'default', style, ...props }: CardProps) {
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
+
   const variants = {
-    default: 'bg-white dark:bg-gray-900 rounded-2xl p-5 shadow-sm',
-    elevated: 'bg-white dark:bg-gray-900 rounded-2xl p-5 shadow-lg',
+    default:
+      'rounded-2xl border border-gray-200/70 bg-white p-5 dark:border-white/10 dark:bg-white/5',
+    elevated:
+      'rounded-2xl border border-gray-200/60 bg-white p-5 dark:border-white/10 dark:bg-white/10',
     outlined:
-      'bg-white dark:bg-gray-900 rounded-2xl p-5 border border-gray-200 dark:border-gray-800',
+      'rounded-2xl border border-gray-200/80 bg-transparent p-5 dark:border-white/10',
   };
 
   return (
     <View
       className={variants[variant]}
       style={[
-        variant === 'default' && {
-          shadowOffset: { width: 0, height: 1 },
-          shadowRadius: 3,
-          shadowOpacity: 0.05,
-          elevation: 2,
-        },
-        variant === 'elevated' && {
-          shadowOffset: { width: 0, height: 4 },
-          shadowRadius: 12,
-          shadowOpacity: 0.1,
-          elevation: 8,
-        },
+        variant === 'default' &&
+          (isDark
+            ? { shadowColor: 'transparent' }
+            : { shadowColor: '#0f172a0d', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.08, shadowRadius: 16, elevation: 4 }),
+        variant === 'elevated' &&
+          (isDark
+            ? { shadowColor: 'transparent' }
+            : { shadowColor: '#0f172a14', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.12, shadowRadius: 24, elevation: 6 }),
         style,
       ]}
       {...props}>

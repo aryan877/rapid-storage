@@ -10,20 +10,30 @@
     "experiments": {
       "tsconfigPaths": true
     },
-    "plugins": ["expo-dev-client"],
+    "plugins": [
+      "expo-dev-client",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Rapid Storage needs access to your photo library to let you select and upload images and videos."
+        }
+      ]
+    ],
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
-    "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
     "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.rapidstorage.app",
-      "infoPlist": {}
+      "bundleIdentifier": "com.rapidstorage.app"
     },
     "android": {
       "adaptiveIcon": {
@@ -31,21 +41,22 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.rapidstorage.app",
-      "permissions": ["READ_EXTERNAL_STORAGE"],
-      "blockedPermissions": ["android.permission.CAMERA", "android.permission.RECORD_AUDIO"]
+      "versionCode": 2
     },
     "extra": {
       "eas": {
-        "projectId": "5a02ee99-4af3-4a4f-bb90-dce3201be2b0"
+        "projectId": "b1773edf-ad8f-4a0b-aae7-a4c588fa7b0e"
       }
     },
     "updates": {
-      "url": "https://u.expo.dev/5a02ee99-4af3-4a4f-bb90-dce3201be2b0",
+      "url": "https://u.expo.dev/b1773edf-ad8f-4a0b-aae7-a4c588fa7b0e",
       "enabled": true,
-      "fallbackToCacheTimeout": 0,
-      "checkAutomatically": "ON_LOAD"
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
     },
-    "runtimeVersion": "1.0.1",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "owner": "aryankumar877"
   }
 }

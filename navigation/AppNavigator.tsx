@@ -27,9 +27,9 @@ function TabNavigator() {
   const insets = useSafeAreaInsets();
 
   const themeColors = {
-    primary: colorScheme === 'dark' ? colors.blue[500] : colors.blue[600],
-    textActive: colorScheme === 'dark' ? colors.blue[500] : colors.blue[600],
+    textActive: colorScheme === 'dark' ? colors.gray[100] : colors.gray[900],
     textInactive: colorScheme === 'dark' ? colors.gray[500] : colors.gray[400],
+    activeIndicator: colorScheme === 'dark' ? colors.gray[100] : colors.gray[900],
     tabBar: colorScheme === 'dark' ? colors.gray[900] : colors.white,
     border: colorScheme === 'dark' ? colors.gray[800] : colors.gray[200],
   };
@@ -38,7 +38,7 @@ function TabNavigator() {
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarIcon: ({ focused, color, size }) => {
+        tabBarIcon: ({ focused, color }) => {
           let iconName: keyof typeof Ionicons.glyphMap;
 
           if (route.name === 'Files') {
@@ -53,7 +53,10 @@ function TabNavigator() {
             <View className="items-center justify-center">
               <Ionicons name={iconName} size={24} color={color} />
               {focused && (
-                <View className="absolute -top-4 h-1 w-12 rounded-full bg-blue-600 dark:bg-blue-500" />
+                <View
+                  className="absolute -top-4 h-1 w-12 rounded-full"
+                  style={{ backgroundColor: themeColors.activeIndicator }}
+                />
               )}
             </View>
           );

@@ -3,7 +3,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, Text, View, useColorScheme } from 'react-native';
+import Button from '../components/Button';
 import { supabase } from '../lib/supabase';
 import { formatFileSize } from '../types/database';
 
@@ -27,6 +28,10 @@ const UploadScreen: React.FC<UploadScreenProps> = ({ navigation, route }) => {
   const { folderId } = route.params;
   const [files, setFiles] = useState<FileToUpload[]>([]);
   const queryClient = useQueryClient();
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
+  const containerClass = `flex-1 ${isDark ? 'bg-black' : 'bg-[#f7f8fb]'}`;
+  const iconTint = isDark ? '#e5e7eb' : '#111827';
 
   const pickImages = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -155,55 +160,58 @@ const UploadScreen: React.FC<UploadScreenProps> = ({ navigation, route }) => {
   };
 
   const getFileIcon = (type: string) => {
-    if (type.startsWith('image/')) return { name: 'image', color: '#10b981' };
-    if (type.startsWith('video/')) return { name: 'videocam', color: '#ef4444' };
-    if (type.startsWith('audio/')) return { name: 'musical-notes', color: '#8b5cf6' };
-    if (type.includes('pdf')) return { name: 'document', color: '#dc2626' };
-    return { name: 'document-text', color: '#3b82f6' };
+    if (type.startsWith('image/')) return 'image-outline';
+    if (type.startsWith('video/')) return 'videocam-outline';
+    if (type.startsWith('audio/')) return 'musical-notes-outline';
+    if (type.includes('pdf')) return 'document-text-outline';
+    return 'document-text-outline';
   };
 
   return (
-    <View className="flex-1 bg-gray-50 dark:bg-black">
+    <View className={containerClass}>
       <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 32 }}>
-        <View className="p-6">
-          {/* Upload Options */}
-          <Text className="mb-6 text-2xl font-bold text-gray-900 dark:text-white">
+        <View className="px-6 pt-8">
+          <Text className="text-3xl font-semibold text-gray-900 dark:text-white">
             Choose files to upload
           </Text>
 
-          <View className="mb-8 gap-4">
+          <Text className="mt-3 text-base text-gray-500 dark:text-gray-400">
+            Keep your uploads intentional—add only what you need.
+          </Text>
+
+          <View className="mt-8 gap-4">
             <Pressable
               onPress={pickImages}
-              className="flex-row items-center rounded-2xl bg-white p-5 shadow-sm active:scale-[0.98] dark:bg-gray-900">
-              <View className="mr-4 h-16 w-16 items-center justify-center rounded-xl bg-green-100 dark:bg-green-950/30">
-                <Ionicons name="image" size={32} color="#10b981" />
+              className="flex-row items-center rounded-2xl border border-gray-200/70 bg-white/90 px-5 py-4 active:scale-[0.99] dark:border-white/10 dark:bg-white/5">
+              <View className="mr-4 h-14 w-14 items-center justify-center rounded-xl border border-gray-200/70 bg-white dark:border-white/10 dark:bg-transparent">
+                <Ionicons name="image-outline" size={24} color={iconTint} />
               </View>
               <View className="flex-1">
-                <Text className="text-lg font-semibold text-gray-900 dark:text-white">
-                  Photos & Videos
+                <Text className="text-base font-semibold text-gray-900 dark:text-white">
+                  Photos & videos
                 </Text>
                 <Text className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
-                  Choose from your photo library
+                  Pick multiple images or clips at once.
                 </Text>
               </View>
-              <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
+              <Ionicons name="chevron-forward" size={18} color="#9ca3af" />
             </Pressable>
 
             <Pressable
               onPress={pickDocuments}
-              className="flex-row items-center rounded-2xl bg-white p-5 shadow-sm active:scale-[0.98] dark:bg-gray-900">
-              <View className="mr-4 h-16 w-16 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-950/30">
-                <Ionicons name="document" size={32} color="#3b82f6" />
+              className="flex-row items-center rounded-2xl border border-gray-200/70 bg-white/90 px-5 py-4 active:scale-[0.99] dark:border-white/10 dark:bg-white/5">
+              <View className="mr-4 h-14 w-14 items-center justify-center rounded-xl border border-gray-200/70 bg-white dark:border-white/10 dark:bg-transparent">
+                <Ionicons name="document-text-outline" size={24} color={iconTint} />
               </View>
               <View className="flex-1">
-                <Text className="text-lg font-semibold text-gray-900 dark:text-white">
-                  Documents & Files
+                <Text className="text-base font-semibold text-gray-900 dark:text-white">
+                  Documents & files
                 </Text>
                 <Text className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
                   All file types supported (up to 5GB)
                 </Text>
               </View>
-              <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
+              <Ionicons name="chevron-forward" size={18} color="#9ca3af" />
             </Pressable>
           </View>
 
@@ -225,10 +233,9 @@ const UploadScreen: React.FC<UploadScreenProps> = ({ navigation, route }) => {
                   return (
                     <View
                       key={index}
-                      className="flex-row items-center rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-900">
-                      <View
-                        className={`mr-4 h-12 w-12 items-center justify-center rounded-xl bg-gray-50 dark:bg-gray-800`}>
-                        <Ionicons name={icon.name as any} size={24} color={icon.color} />
+                      className="flex-row items-center rounded-2xl border border-gray-200/70 bg-white/90 px-4 py-3 dark:border-white/10 dark:bg-white/5">
+                      <View className="mr-4 h-12 w-12 items-center justify-center rounded-xl border border-gray-200/70 bg-white dark:border-white/10 dark:bg-transparent">
+                        <Ionicons name={icon as any} size={20} color={iconTint} />
                       </View>
                       <View className="flex-1">
                         <Text
@@ -242,8 +249,8 @@ const UploadScreen: React.FC<UploadScreenProps> = ({ navigation, route }) => {
                       </View>
                       <Pressable
                         onPress={() => removeFile(index)}
-                        className="ml-2 rounded-lg p-2 active:bg-gray-100 dark:active:bg-gray-800">
-                        <Ionicons name="trash-outline" size={20} color="#ef4444" />
+                        className="ml-2 rounded-full border border-gray-200/70 p-2 active:bg-gray-100 dark:border-white/10 dark:active:bg-white/10">
+                        <Ionicons name="trash-outline" size={18} color="#ef4444" />
                       </Pressable>
                     </View>
                   );
@@ -251,83 +258,62 @@ const UploadScreen: React.FC<UploadScreenProps> = ({ navigation, route }) => {
               </View>
 
               {/* Upload Button */}
-              <Pressable
+              <Button
                 onPress={handleUpload}
-                disabled={files.length === 0 || uploadMutation.isPending}
-                className={`mt-6 rounded-2xl px-6 py-4 ${
-                  files.length === 0 || uploadMutation.isPending
-                    ? 'bg-gray-200 dark:bg-gray-700'
-                    : 'bg-blue-600 active:bg-blue-700'
-                }`}>
-                <View className="flex-row items-center justify-center">
-                  {uploadMutation.isPending ? (
-                    <ActivityIndicator size="small" color="white" style={{ marginRight: 8 }} />
-                  ) : (
-                    <Ionicons
-                      name="cloud-upload"
-                      size={24}
-                      color="white"
-                      style={{ marginRight: 8 }}
-                    />
-                  )}
-                  <Text
-                    className={`text-lg font-semibold ${
-                      files.length === 0 ? 'text-gray-400 dark:text-gray-500' : 'text-white'
-                    }`}>
-                    {uploadMutation.isPending
-                      ? 'Uploading...'
-                      : `Upload ${files.length} file${files.length === 1 ? '' : 's'}`}
-                  </Text>
-                </View>
-              </Pressable>
+                disabled={files.length === 0}
+                loading={uploadMutation.isPending}
+                title={
+                  uploadMutation.isPending
+                    ? 'Uploading...'
+                    : `Upload ${files.length} file${files.length === 1 ? '' : 's'}`
+                }
+                leftIcon={
+                  <Ionicons
+                    name="cloud-upload-outline"
+                    size={20}
+                    color={isDark ? '#111827' : '#ffffff'}
+                  />
+                }
+                className="mt-6"
+                size="lg"
+              />
             </View>
           )}
 
           {/* Upload Info */}
           {files.length === 0 && (
-            <View className="mt-8 rounded-2xl border border-gray-200 bg-gray-50 p-6 dark:border-gray-700 dark:bg-gray-900/50">
+            <View className="mt-10 rounded-2xl border border-gray-200/70 bg-white/90 p-6 dark:border-white/10 dark:bg-white/5">
               <View className="items-center">
-                <View className="mb-4 h-20 w-20 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
-                  <Ionicons name="cloud-upload-outline" size={40} color="#9ca3af" />
+                <View className="mb-4 h-16 w-16 items-center justify-center rounded-full border border-dashed border-gray-300 dark:border-white/15">
+                  <Ionicons name="cloud-upload-outline" size={28} color={iconTint} />
                 </View>
-                <Text className="mb-2 text-lg font-semibold text-gray-700 dark:text-gray-300">
-                  No files selected
+                <Text className="mb-2 text-base font-semibold text-gray-800 dark:text-gray-200">
+                  Nothing queued yet
                 </Text>
                 <Text className="text-center text-sm text-gray-500 dark:text-gray-400">
-                  Choose photos, videos, or documents to upload to your storage
+                  Select files to stage them for upload.
                 </Text>
               </View>
             </View>
           )}
 
           {/* Features Info */}
-          <View className="mt-8 gap-3">
-            <View className="flex-row items-center rounded-xl bg-blue-50 p-4 dark:bg-blue-950/20">
-              <Ionicons
-                name="information-circle"
-                size={20}
-                color="#3b82f6"
-                style={{ marginRight: 12 }}
-              />
-              <Text className="flex-1 text-sm leading-relaxed text-gray-700 dark:text-gray-300">
-                <Text className="font-semibold">Tip:</Text> You can select multiple files at once
-                for faster uploads
+          <View className="mt-10 gap-3">
+            <View className="flex-row items-start rounded-2xl border border-gray-200/70 bg-white/90 px-4 py-4 dark:border-white/10 dark:bg-white/5">
+              <Ionicons name="information-circle-outline" size={18} color={iconTint} style={{ marginRight: 12 }} />
+              <Text className="flex-1 text-sm leading-relaxed text-gray-600 dark:text-gray-400">
+                Select multiple files in one go for fewer upload cycles.
               </Text>
             </View>
 
-            <View className="flex-row items-start rounded-xl bg-green-50 p-4 dark:bg-green-950/20">
-              <Ionicons
-                name="shield-checkmark"
-                size={20}
-                color="#10b981"
-                style={{ marginRight: 12, marginTop: 2 }}
-              />
+            <View className="flex-row items-start rounded-2xl border border-gray-200/70 bg-white/90 px-4 py-4 dark:border-white/10 dark:bg-white/5">
+              <Ionicons name="shield-checkmark-outline" size={18} color={iconTint} style={{ marginRight: 12, marginTop: 2 }} />
               <View className="flex-1">
                 <Text className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                  Secure Upload
+                  Secure by default
                 </Text>
                 <Text className="mt-1 text-sm leading-relaxed text-gray-600 dark:text-gray-400">
-                  Your files are encrypted during upload and stored securely on AWS S3
+                  Uploads are encrypted in transit and stored safely on AWS S3.
                 </Text>
               </View>
             </View>
