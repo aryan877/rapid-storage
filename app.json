@@ -2,10 +2,10 @@
   "expo": {
     "name": "Rapid Storage",
     "slug": "rapid-storage",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "scheme": "com.rapidstorage",
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/adaptive-icon.png"
     },
     "experiments": {
       "tsconfigPaths": true
@@ -15,9 +15,14 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/splash.png",
+          "image": "./assets/splash-icon-light.png",
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff"
+          "backgroundColor": "#ffffff",
+          "dark": {
+            "image": "./assets/splash-icon-dark.png",
+            "backgroundColor": "#000000"
+          },
+          "imageWidth": 200
         }
       ],
       [
@@ -28,20 +33,22 @@
       ]
     ],
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/adaptive-icon.png",
     "userInterfaceStyle": "automatic",
     "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.rapidstorage.app"
+      "bundleIdentifier": "com.rapidstorage.app",
+      "icon": "./assets/ios-light.png",
+      "darkIcon": "./assets/ios-dark.png",
+      "tintedIcon": "./assets/ios-tinted.png"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.rapidstorage.app",
-      "versionCode": 2
+      "package": "com.rapidstorage.app"
     },
     "extra": {
       "eas": {
