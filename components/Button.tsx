@@ -1,15 +1,8 @@
 import React from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  Text,
-  View,
-  ViewStyle,
-  useColorScheme,
-} from 'react-native';
+import { ActivityIndicator, Pressable, Text, View, ViewStyle } from 'react-native';
 
-type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
-type Size = 'md' | 'lg';
+type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'outline';
+type Size = 'sm' | 'md' | 'lg';
 
 interface ButtonProps {
   title: string;
@@ -36,63 +29,60 @@ export default function Button({
   style,
   className,
 }: ButtonProps) {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
+  const baseClasses = 'flex-row items-center justify-center transition-all duration-200';
 
-  const base = 'rounded-xl flex-row items-center justify-center';
   const variants: Record<Variant, string> = {
-    primary: isDark ? 'bg-white' : 'bg-gray-900',
-    secondary: isDark
-      ? 'border border-white/10 bg-white/5'
-      : 'border border-gray-300 bg-white',
-    ghost: 'bg-transparent',
-    danger: 'bg-rose-500',
+    primary: 'bg-zinc-200 active:bg-zinc-300 shadow-lg',
+    secondary: 'bg-zinc-900 border border-zinc-700 active:bg-zinc-800',
+    outline: 'border border-zinc-700 bg-transparent active:bg-zinc-900',
+    ghost: 'bg-transparent active:bg-zinc-900',
+    danger: 'bg-zinc-900 border border-zinc-700 active:bg-zinc-800',
   };
-  const paddings: Record<Size, string> = {
-    md: 'px-4 py-3',
-    lg: 'px-6 py-4',
-  };
-  const textColor = (() => {
-    if (variant === 'primary') {
-      return isDark ? 'text-gray-900' : 'text-white';
-    }
-    if (variant === 'secondary') {
-      return isDark ? 'text-gray-100' : 'text-gray-900';
-    }
-    if (variant === 'danger') {
-      return 'text-white';
-    }
-    return isDark ? 'text-gray-100' : 'text-gray-900';
-  })();
 
-  const spinnerColor = (() => {
-    if (variant === 'primary') {
-      return isDark ? '#111827' : '#ffffff';
-    }
-    if (variant === 'secondary') {
-      return isDark ? '#f3f4f6' : '#111827';
-    }
-    if (variant === 'danger') {
-      return '#ffffff';
-    }
-    return isDark ? '#f3f4f6' : '#111827';
-  })();
+  const sizes: Record<Size, string> = {
+    sm: 'px-3 py-2 rounded-lg',
+    md: 'px-4 py-3 rounded-xl',
+    lg: 'px-6 py-4 rounded-2xl',
+  };
+
+  const textSizes: Record<Size, string> = {
+    sm: 'text-sm',
+    md: 'text-base',
+    lg: 'text-lg',
+  };
+
+  const textColors: Record<Variant, string> = {
+    primary: 'text-zinc-900 font-semibold',
+    secondary: 'text-zinc-100 font-medium',
+    outline: 'text-zinc-100 font-medium',
+    ghost: 'text-zinc-100 font-medium',
+    danger: 'text-zinc-100 font-semibold',
+  };
+
+  const spinnerColors: Record<Variant, string> = {
+    primary: '#09090b',
+    secondary: '#a1a1aa',
+    outline: '#a1a1aa',
+    ghost: '#a1a1aa',
+    danger: '#a1a1aa',
+  };
+
+  const disabledClasses = disabled || loading ? 'opacity-50' : '';
+  const combinedClasses = `${baseClasses} ${variants[variant]} ${sizes[size]} ${disabledClasses} ${className || ''}`;
 
   return (
     <Pressable
       onPress={onPress}
       disabled={disabled || loading}
-      className={`${base} ${variants[variant]} ${paddings[size]} ${className ?? ''} ${
-        disabled || loading ? 'opacity-60' : ''
-      }`}
+      className={combinedClasses}
       style={style}>
       <View className="flex-row items-center" style={{ gap: 8 }}>
         {loading ? (
-          <ActivityIndicator size="small" color={spinnerColor} />
+          <ActivityIndicator size="small" color={spinnerColors[variant]} />
         ) : (
-          leftIcon ?? null
+          (leftIcon ?? null)
         )}
-        <Text className={`text-base font-semibold ${textColor}`}>{title}</Text>
+        <Text className={`${textSizes[size]} ${textColors[variant]}`}>{title}</Text>
         {rightIcon ?? null}
       </View>
     </Pressable>

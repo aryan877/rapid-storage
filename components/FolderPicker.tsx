@@ -1,20 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useMemo, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  Pressable,
-  Text,
-  TextInput,
-  View,
-  useColorScheme,
-} from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Pressable, Text, TextInput, View } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { useCreateFolderMutation, usePickerFoldersQuery } from '../queries';
 import { Folder } from '../types/database';
 import Button from './Button';
-
 
 interface FolderPickerProps {
   onSelectFolder: (folderId: string | null) => void;
@@ -30,9 +20,6 @@ export const FolderPicker: React.FC<FolderPickerProps> = ({
   itemType,
 }) => {
   const { user } = useAuth();
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
-  const iconTint = isDark ? '#e5e7eb' : '#111827';
   const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
   const [path, setPath] = useState<{ id: string | null; name: string }[]>([
     { id: null, name: 'My Drive' },
@@ -104,29 +91,39 @@ export const FolderPicker: React.FC<FolderPickerProps> = ({
   const renderItem = ({ item }: { item: Folder }) => (
     <Pressable
       onPress={() => handleNavigate(item)}
-      className="my-1 flex-row items-center rounded-2xl border border-gray-200/70 bg-white/90 px-4 py-3 dark:border-white/10 dark:bg-white/5">
-      <Ionicons name="folder-outline" size={20} color={iconTint} style={{ marginRight: 12 }} />
-      <Text className="flex-1 text-sm font-medium text-gray-800 dark:text-gray-200">{item.name}</Text>
-      <Ionicons name="chevron-forward" size={16} color="#9ca3af" />
+      className="mx-4 mb-3 flex-row items-center rounded-2xl bg-zinc-900 p-4 active:bg-zinc-800">
+      <View className="mr-4 h-10 w-10 items-center justify-center rounded-xl bg-zinc-800">
+        <Ionicons name="folder" size={20} color="#71717a" />
+      </View>
+      <Text className="flex-1 text-base font-semibold text-zinc-100">{item.name}</Text>
+      <Ionicons name="chevron-forward" size={18} color="#71717a" />
     </Pressable>
   );
 
   return (
-    <View className="flex-1">
-      <View className="border-b border-gray-200/60 px-4 py-4 dark:border-white/10">
-        <View className="flex-row flex-wrap items-center">
+    <View className="flex-1 bg-zinc-950">
+      {/* Header with breadcrumbs */}
+      <View className="border-b border-zinc-800 px-6 py-4">
+        <View className="mb-4 flex-row flex-wrap items-center">
           <Pressable
             onPress={() => handleBreadcrumbNavigate(0)}
-            className="mr-2 rounded-full border border-gray-200/70 p-2 dark:border-white/10">
-            <Ionicons name="home-outline" size={16} color={iconTint} />
+            className="mr-3 h-8 w-8 items-center justify-center rounded-xl bg-zinc-900">
+            <Ionicons name="home" size={16} color="#71717a" />
           </Pressable>
           {path.slice(1).map((p, i) => (
             <View key={p.id ?? i} className="flex-row items-center">
-              <Text className="mx-2 text-sm text-gray-400">/</Text>
+              <Ionicons
+                name="chevron-forward"
+                size={14}
+                color="#71717a"
+                style={{ marginHorizontal: 8 }}
+              />
               <Pressable onPress={() => handleBreadcrumbNavigate(i + 1)}>
                 <Text
-                  className={`text-sm ${
-                    i === path.length - 2 ? 'font-medium text-gray-900 dark:text-white' : 'text-gray-500'
+                  className={`rounded-lg px-2 py-1 text-sm ${
+                    i === path.length - 2
+                      ? 'bg-zinc-900 font-semibold text-zinc-100'
+                      : 'text-zinc-500'
                   }`}>
                   {p.name}
                 </Text>
@@ -134,10 +131,12 @@ export const FolderPicker: React.FC<FolderPickerProps> = ({
             </View>
           ))}
         </View>
-        <View className="mt-4 flex-row items-center justify-between">
+
+        <View className="flex-row items-center justify-between">
           <Button
-            variant="secondary"
-            title={isCreating ? 'Cancel' : 'New folder'}
+            variant="outline"
+            size="sm"
+            title={isCreating ? 'Cancel' : 'New Folder'}
             onPress={() => {
               if (isCreating) {
                 setIsCreating(false);
@@ -146,68 +145,88 @@ export const FolderPicker: React.FC<FolderPickerProps> = ({
                 setIsCreating(true);
               }
             }}
-            leftIcon={<Ionicons name={isCreating ? 'close' : 'add'} size={16} color={iconTint} />}
+            leftIcon={<Ionicons name={isCreating ? 'close' : 'add'} size={16} color="#71717a" />}
           />
           {path.length > 1 && (
-            <Pressable
+            <Button
+              variant="ghost"
+              size="sm"
+              title="Back"
               onPress={handleGoBack}
-              className="flex-row items-center rounded-full border border-gray-200/70 px-3 py-1.5 dark:border-white/10">
-              <Ionicons name="arrow-back" size={16} color={iconTint} />
-              <Text className="ml-2 text-sm text-gray-600 dark:text-gray-300">Up one level</Text>
-            </Pressable>
+              leftIcon={<Ionicons name="chevron-back" size={16} color="#71717a" />}
+            />
           )}
         </View>
+
         {isCreating && (
-          <View className="mt-3 flex-row gap-2">
+          <View className="mt-4 gap-3">
             <TextInput
               value={newFolderName}
               onChangeText={setNewFolderName}
-              placeholder="Folder name"
-              className="flex-1 rounded-xl border border-gray-200/70 bg-white px-3 py-2 text-sm text-gray-900 dark:border-white/10 dark:bg-white/10 dark:text-white"
+              placeholder="Enter folder name..."
+              placeholderTextColor="#71717a"
+              className="w-full rounded-2xl bg-zinc-900 px-4 py-3 text-base text-zinc-100"
               autoFocus
             />
             <Button
-              title="Create"
+              variant="primary"
+              size="md"
+              title="Create Folder"
               onPress={handleCreateFolder}
               loading={createFolderMutation.isPending}
+              disabled={!newFolderName.trim()}
+              className="w-full"
             />
           </View>
         )}
       </View>
 
+      {/* Folder list */}
       {isLoading ? (
-        <ActivityIndicator size="small" color={iconTint} style={{ marginTop: 20 }} />
+        <View className="flex-1 items-center justify-center">
+          <ActivityIndicator size="small" color="#71717a" />
+          <Text className="mt-3 text-sm text-zinc-500">Loading folders...</Text>
+        </View>
       ) : (
         <FlatList
           data={filteredFolders}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
-          contentContainerStyle={{ paddingHorizontal: 12, paddingVertical: 8 }}
+          contentContainerStyle={{ paddingVertical: 16 }}
           onEndReached={loadMore}
           onEndReachedThreshold={0.5}
           ListFooterComponent={
             isFetchingNextPage ? (
-              <ActivityIndicator size="small" color={iconTint} style={{ marginVertical: 20 }} />
+              <View className="items-center py-8">
+                <ActivityIndicator size="small" color="#a1a1aa" />
+              </View>
             ) : null
           }
           ListEmptyComponent={
             !isLoading && filteredFolders.length === 0 ? (
-              <View className="items-center justify-center p-8">
-                <View className="mb-4 h-14 w-14 items-center justify-center rounded-full border border-dashed border-gray-300 dark:border-white/15">
-                  <Ionicons name="folder-open-outline" size={22} color={iconTint} />
+              <View className="items-center justify-center px-8 py-16">
+                <View className="mb-4 h-20 w-20 items-center justify-center rounded-3xl bg-zinc-900">
+                  <Ionicons name="folder-open-outline" size={32} color="#71717a" />
                 </View>
-                <Text className="text-sm text-gray-500 dark:text-gray-400">No sub-folders here</Text>
+                <Text className="mb-2 text-lg font-semibold text-zinc-100">No Subfolders</Text>
+                <Text className="text-center text-sm text-zinc-500">
+                  This folder doesn&apos;t contain any subfolders yet.
+                </Text>
               </View>
             ) : null
           }
         />
       )}
 
-      <View className="border-t border-gray-200/60 px-4 py-4 dark:border-white/10">
+      {/* Move button */}
+      <View className="border-t border-zinc-800 px-6 py-4">
         <Button
+          variant="primary"
+          size="lg"
           onPress={() => onSelectFolder(activeFolderId)}
           disabled={activeFolderId === currentFolderId}
-          title={`Move to ${path[path.length - 1].name}`}
+          title={`Move to "${path[path.length - 1].name}"`}
+          className="w-full"
         />
       </View>
     </View>

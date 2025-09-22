@@ -1,5 +1,4 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import React, { useCallback, useMemo, useState } from 'react';
@@ -17,10 +16,10 @@ import {
   Text,
   TextInput,
   View,
-  useColorScheme,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Button from '../components/Button';
+import Card from '../components/Card';
 import { FolderPicker } from '../components/FolderPicker';
 import { useAuth } from '../contexts/AuthContext';
 import { useDebounce } from '../hooks/useDebounce';
@@ -35,7 +34,6 @@ import {
   useMoveFolderMutation,
 } from '../queries';
 import { File, Folder, formatFileSize, getFileIcon, type FileIconType } from '../types/database';
-
 
 type Item = (File | Folder) & {
   type: 'file' | 'folder';
@@ -65,9 +63,21 @@ const FileIcon: React.FC<{ type: FileIconType; size?: number }> = ({ type, size 
     unknown: 'document',
   };
 
-  const colorScheme = useColorScheme();
-  const tint = colorScheme === 'dark' ? '#e5e7eb' : '#111827';
-  return <Ionicons name={glyphMap[type] as any} size={size} color={tint} />;
+  const colorMap: Record<FileIconType, string> = {
+    document: '#71717a',
+    image: '#71717a',
+    video: '#71717a',
+    audio: '#71717a',
+    archive: '#71717a',
+    code: '#71717a',
+    pdf: '#71717a',
+    spreadsheet: '#71717a',
+    presentation: '#71717a',
+    text: '#71717a',
+    unknown: '#71717a',
+  };
+
+  return <Ionicons name={glyphMap[type] as any} size={size} color={colorMap[type]} />;
 };
 
 // Separate memoized search component to prevent keyboard issues
@@ -79,16 +89,24 @@ const SearchInput = React.memo(
     searchQuery: string;
     onSearchChange: (query: string) => void;
   }) => (
-    <View className="mb-5">
-      <View className="flex-row items-center rounded-xl border border-gray-200/70 bg-white px-4 dark:border-white/10 dark:bg-white/5">
-        <Ionicons name="search" size={18} color="#9ca3af" />
+    <View className="mb-6">
+      <View className="flex-row items-center rounded-2xl bg-zinc-900 px-4 py-3">
+        <Ionicons name="search" size={20} color="#71717a" />
         <TextInput
-          placeholder="Search in this folder..."
+          placeholder="Search files and folders..."
           value={searchQuery}
           onChangeText={onSearchChange}
-          className="flex-1 py-3 pl-3 text-gray-900 dark:text-white"
-          placeholderTextColor="#9ca3af"
+          className="ml-3 flex-1 text-base text-zinc-100"
+          placeholderTextColor="#71717a"
         />
+        {searchQuery.length > 0 && (
+          <Ionicons
+            name="close-circle"
+            size={20}
+            color="#71717a"
+            onPress={() => onSearchChange('')}
+          />
+        )}
       </View>
     </View>
   )
@@ -96,13 +114,8 @@ const SearchInput = React.memo(
 
 const FileManagerScreen: React.FC<FileManagerScreenProps> = ({ navigation }) => {
   const { user } = useAuth();
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
-  const iconColor = isDark ? '#e5e7eb' : '#111827';
-  const containerClass = `flex-1 ${isDark ? 'bg-black' : 'bg-[#f7f8fb]'}`;
-  const primaryButtonIconColor = isDark ? '#111827' : '#ffffff';
+  const iconColor = '#a1a1aa';
   const insets = useSafeAreaInsets();
-  const queryClient = useQueryClient();
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [folderPath, setFolderPath] = useState<{ id: string | null; name: string }[]>([
     { id: null, name: 'My Drive' },
@@ -332,41 +345,45 @@ const FileManagerScreen: React.FC<FileManagerScreenProps> = ({ navigation }) => 
     }
   }, [folderPath, navigateToPath]);
 
-  const createFolder = useCallback(async () => {
-    if (!newFolderName.trim() || createFolderMutation.isPending) return;
-    handleCreateFolder();
-  }, [newFolderName, createFolderMutation.isPending, handleCreateFolder]);
-
   const renderBreadcrumb = useCallback(
     () => (
-      <View className="px-6 pt-6">
-        <View className="flex-row items-center justify-between">
-          <Text className="text-2xl font-semibold text-gray-900 dark:text-white">
+      <View className="px-6 pb-2 pt-4">
+        <View className="mb-3 flex-row items-center justify-between">
+          <Text className="text-3xl font-bold text-zinc-100">
             {folderPath[folderPath.length - 1]?.name || 'My Drive'}
           </Text>
           {folderPath.length > 1 && (
-            <Pressable
+            <Button
               onPress={handleGoBack}
-              className="rounded-full border border-gray-200/70 px-3 py-1.5 dark:border-white/10">
-              <Text className="text-sm font-medium text-gray-600 dark:text-gray-300">Up one level</Text>
-            </Pressable>
+              variant="outline"
+              size="sm"
+              title="Back"
+              leftIcon={<Ionicons name="chevron-back" size={16} color={iconColor} />}
+            />
           )}
         </View>
         {folderPath.length > 1 && (
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            className="mt-3"
+            className="mb-2"
             contentContainerStyle={{ alignItems: 'center' }}>
             {folderPath.map((path, index) => (
               <View key={path.id ?? index} className="flex-row items-center">
-                {index > 0 && <Text className="mx-2 text-sm text-gray-400">/</Text>}
+                {index > 0 && (
+                  <Ionicons
+                    name="chevron-forward"
+                    size={14}
+                    color="#71717a"
+                    style={{ marginHorizontal: 8 }}
+                  />
+                )}
                 <Pressable onPress={() => navigateToPath(index)}>
                   <Text
-                    className={`text-sm ${
+                    className={`rounded-lg px-2 py-1 text-sm ${
                       index === folderPath.length - 1
-                        ? 'font-medium text-gray-900 dark:text-white'
-                        : 'text-gray-500 dark:text-gray-400'
+                        ? 'bg-zinc-900 font-semibold text-zinc-100'
+                        : 'text-zinc-500'
                     }`}
                     numberOfLines={1}>
                     {path.name}
@@ -378,27 +395,29 @@ const FileManagerScreen: React.FC<FileManagerScreenProps> = ({ navigation }) => 
         )}
       </View>
     ),
-    [folderPath, navigateToPath, handleGoBack]
+    [folderPath, navigateToPath, handleGoBack, iconColor]
   );
 
   const renderFolder = useCallback(
     ({ item }: { item: Folder }) => (
-      <View className="mx-5 my-1 flex-row items-center rounded-2xl border border-gray-200/70 bg-white/90 px-4 py-3 dark:border-white/10 dark:bg-white/5">
-        <Pressable onPress={() => navigateToFolder(item)} className="flex-1 flex-row items-center">
-          <View className="mr-4 h-10 w-10 items-center justify-center rounded-xl border border-gray-200/70 bg-white dark:border-white/10 dark:bg-transparent">
-            <Ionicons name="folder-outline" size={22} color={iconColor} />
+      <View className="mx-4 mb-3">
+        <Pressable
+          onPress={() => navigateToFolder(item)}
+          className="flex-row items-center rounded-2xl border border-zinc-800 bg-zinc-900 p-4 active:bg-zinc-800">
+          <View className="mr-4 h-12 w-12 items-center justify-center rounded-2xl bg-zinc-800">
+            <Ionicons name="folder" size={24} color="#71717a" />
           </View>
           <View className="flex-1">
-            <Text className="text-base font-medium text-gray-900 dark:text-white">{item.name}</Text>
-            <Text className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
-              {new Date(item.created_at!).toLocaleDateString()}
+            <Text className="mb-1 text-lg font-semibold text-zinc-100">{item.name}</Text>
+            <Text className="text-sm text-zinc-500">
+              Created {new Date(item.created_at!).toLocaleDateString()}
             </Text>
           </View>
-        </Pressable>
-        <Pressable
-          className="ml-2 rounded-full border border-gray-200/70 p-2 dark:border-white/10"
-          onPress={() => openActionSheet({ ...item, type: 'folder' })}>
-          <Ionicons name="ellipsis-horizontal" size={18} color={iconColor} />
+          <Pressable
+            className="ml-2 h-10 w-10 items-center justify-center rounded-xl bg-zinc-900"
+            onPress={() => openActionSheet({ ...item, type: 'folder' })}>
+            <Ionicons name="ellipsis-horizontal" size={18} color={iconColor} />
+          </Pressable>
         </Pressable>
       </View>
     ),
@@ -407,24 +426,26 @@ const FileManagerScreen: React.FC<FileManagerScreenProps> = ({ navigation }) => 
 
   const renderFile = useCallback(
     ({ item }: { item: File }) => (
-      <View className="mx-5 my-1 flex-row items-center rounded-2xl border border-gray-200/70 bg-white/90 px-4 py-3 dark:border-white/10 dark:bg-white/5">
+      <View className="mx-4 mb-3">
         <Pressable
           onPress={() => openPreview({ ...item, type: 'file' })}
-          className="flex-1 flex-row items-center">
-          <View className="mr-4 h-10 w-10 items-center justify-center rounded-xl border border-gray-200/70 bg-white dark:border-white/10 dark:bg-transparent">
-            <FileIcon type={getFileIcon(item.mime_type || undefined)} size={22} />
+          className="flex-row items-center rounded-2xl border border-zinc-800 bg-zinc-900 p-4 active:bg-zinc-800">
+          <View className="mr-4 h-12 w-12 items-center justify-center rounded-2xl bg-zinc-900">
+            <FileIcon type={getFileIcon(item.mime_type || undefined)} size={24} />
           </View>
           <View className="flex-1">
-            <Text className="text-base font-medium text-gray-900 dark:text-white">{item.name}</Text>
-            <Text className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
+            <Text className="mb-1 text-lg font-semibold text-zinc-100" numberOfLines={1}>
+              {item.name}
+            </Text>
+            <Text className="text-sm text-zinc-500">
               {formatFileSize(item.size_bytes)} • {new Date(item.created_at!).toLocaleDateString()}
             </Text>
           </View>
-        </Pressable>
-        <Pressable
-          className="ml-2 rounded-full border border-gray-200/70 p-2 dark:border-white/10"
-          onPress={() => openActionSheet({ ...item, type: 'file' })}>
-          <Ionicons name="ellipsis-horizontal" size={18} color={iconColor} />
+          <Pressable
+            className="ml-2 h-10 w-10 items-center justify-center rounded-xl bg-zinc-900"
+            onPress={() => openActionSheet({ ...item, type: 'file' })}>
+            <Ionicons name="ellipsis-horizontal" size={18} color={iconColor} />
+          </Pressable>
         </Pressable>
       </View>
     ),
@@ -436,27 +457,35 @@ const FileManagerScreen: React.FC<FileManagerScreenProps> = ({ navigation }) => 
     () => (
       <>
         {renderBreadcrumb()}
-        <View className="px-6">
-          <View className="mt-6 rounded-2xl border border-gray-200/60 bg-white/90 p-5 dark:border-white/10 dark:bg-white/5">
-            <SearchInput searchQuery={searchQuery} onSearchChange={handleSearchChange} />
-            <View className="flex-row items-center justify-between">
-              <Text className="text-sm text-gray-500 dark:text-gray-400">
-                {folders.length + files.length} item
-                {folders.length + files.length === 1 ? '' : 's'} in this view
+        <View className="mb-4 px-6">
+          <SearchInput searchQuery={searchQuery} onSearchChange={handleSearchChange} />
+
+          <View className="mb-6 flex-row items-center justify-between">
+            <View>
+              <Text className="text-lg font-semibold text-zinc-100">
+                {folders.length + files.length}{' '}
+                {folders.length + files.length === 1 ? 'item' : 'items'}
               </Text>
-              <View className="flex-row items-center" style={{ gap: 10 }}>
-                <Button
-                  variant="secondary"
-                  title="New Folder"
-                  leftIcon={<Ionicons name="add-circle-outline" size={18} color={iconColor} />}
-                  onPress={() => setIsCreateFolderModalVisible(true)}
-                />
-                <Button
-                  title="Upload"
-                  leftIcon={<Ionicons name="cloud-upload-outline" size={18} color={primaryButtonIconColor} />}
-                  onPress={handleNavigateToUpload}
-                />
-              </View>
+              <Text className="text-sm text-zinc-500">
+                {folders.length} folders • {files.length} files
+              </Text>
+            </View>
+
+            <View className="flex-row items-center gap-3">
+              <Button
+                variant="outline"
+                size="sm"
+                title="New Folder"
+                leftIcon={<Ionicons name="folder-open-outline" size={16} color={iconColor} />}
+                onPress={() => setIsCreateFolderModalVisible(true)}
+              />
+              <Button
+                variant="secondary"
+                size="sm"
+                title="Upload"
+                leftIcon={<Ionicons name="cloud-upload-outline" size={16} color="#71717a" />}
+                onPress={handleNavigateToUpload}
+              />
             </View>
           </View>
         </View>
@@ -470,7 +499,6 @@ const FileManagerScreen: React.FC<FileManagerScreenProps> = ({ navigation }) => 
       renderBreadcrumb,
       handleNavigateToUpload,
       iconColor,
-      primaryButtonIconColor,
     ]
   );
 
@@ -492,7 +520,7 @@ const FileManagerScreen: React.FC<FileManagerScreenProps> = ({ navigation }) => 
 
   return (
     <View
-      className={containerClass}
+      className="flex-1 bg-zinc-950"
       style={{
         paddingTop: insets.top,
         paddingLeft: insets.left,
@@ -507,47 +535,58 @@ const FileManagerScreen: React.FC<FileManagerScreenProps> = ({ navigation }) => 
             : renderFile({ item: item as File })
         }
         ListHeaderComponent={renderHeader}
-        contentContainerStyle={{ paddingVertical: 8 }}
+        contentContainerStyle={{ paddingBottom: 20 }}
         onEndReached={loadMore}
         onEndReachedThreshold={0.5}
         ListFooterComponent={
           isFetchingNextFolders || isFetchingNextFiles ? (
-            <ActivityIndicator size="small" color={iconColor} style={{ marginVertical: 20 }} />
+            <View className="items-center py-8">
+              <ActivityIndicator size="small" color="#71717a" />
+            </View>
           ) : null
         }
         refreshControl={
           <RefreshControl
             refreshing={foldersLoading || filesLoading}
             onRefresh={handleRefresh}
-            tintColor={iconColor}
+            tintColor="#71717a"
           />
         }
         ListEmptyComponent={
           !foldersLoading && !filesLoading && allItems.length === 0 ? (
-            <View className="items-center justify-center px-8 py-20">
-              <View className="mb-6 h-24 w-24 items-center justify-center rounded-full border border-dashed border-gray-300 dark:border-white/15">
-                <Ionicons name="folder-open-outline" size={36} color={iconColor} />
+            <View className="items-center justify-center px-8 py-16">
+              <View className="mb-8 h-32 w-32 items-center justify-center rounded-3xl bg-zinc-900">
+                <Ionicons
+                  name={debouncedSearchQuery ? 'search-outline' : 'folder-open-outline'}
+                  size={48}
+                  color="#71717a"
+                />
               </View>
-              <Text className="mb-2 text-lg font-semibold text-gray-800 dark:text-gray-200">
-                {debouncedSearchQuery ? 'No matches' : 'This folder is calm'}
+              <Text className="mb-3 text-center text-2xl font-bold text-zinc-100">
+                {debouncedSearchQuery ? 'No results found' : 'Empty folder'}
               </Text>
-              <Text className="mb-8 max-w-sm text-center text-sm text-gray-500 dark:text-gray-400">
+              <Text className="mb-12 max-w-sm text-center text-base leading-relaxed text-zinc-500">
                 {debouncedSearchQuery
-                  ? 'No items found—try a different name.'
-                  : 'Add a folder or upload files to fill this space.'}
+                  ? 'Try adjusting your search terms or browse your folders.'
+                  : 'This folder is waiting for your first upload or subfolder.'}
               </Text>
               {!debouncedSearchQuery && (
-                <View className="w-full max-w-sm flex-row justify-center" style={{ gap: 12 }}>
+                <View className="w-full max-w-sm gap-3">
                   <Button
                     variant="secondary"
-                    title="New Folder"
-                    onPress={() => setIsCreateFolderModalVisible(true)}
-                    leftIcon={<Ionicons name="add" size={18} color={iconColor} />}
+                    size="lg"
+                    title="Upload Files"
+                    onPress={() => navigation.navigate('Upload', { folderId: currentFolderId })}
+                    leftIcon={<Ionicons name="cloud-upload-outline" size={20} color="#71717a" />}
+                    className="w-full"
                   />
                   <Button
-                    title="Upload"
-                    onPress={() => navigation.navigate('Upload', { folderId: currentFolderId })}
-                    leftIcon={<Ionicons name="cloud-upload-outline" size={18} color={primaryButtonIconColor} />}
+                    variant="outline"
+                    size="lg"
+                    title="Create Folder"
+                    onPress={() => setIsCreateFolderModalVisible(true)}
+                    leftIcon={<Ionicons name="folder-open-outline" size={20} color={iconColor} />}
+                    className="w-full"
                   />
                 </View>
               )}
@@ -558,71 +597,85 @@ const FileManagerScreen: React.FC<FileManagerScreenProps> = ({ navigation }) => 
       {selectedItem && (
         <Modal visible={isActionSheetVisible} transparent animationType="slide">
           <Pressable
-            className="flex-1 items-center justify-center"
+            className="flex-1 justify-end"
             style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
             onPress={() => setIsActionSheetVisible(false)}>
-            <View className="w-[90%] max-w-md rounded-3xl border border-gray-200/70 bg-white/95 p-6 dark:border-white/10 dark:bg-white/5">
-              <Text className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">
-                {selectedItem.type === 'folder'
-                  ? 'Folder'
-                  : `File • ${formatFileSize(selectedItem.size_bytes ?? 0)}`}
-              </Text>
-
-              {selectedItem.type === 'file' && (
-                <>
-                  <Pressable
-                    onPress={() => openPreview(selectedItem)}
-                    className="mb-3 flex-row items-center rounded-xl border border-gray-200/70 px-4 py-3 dark:border-white/10 dark:bg-white/5">
-                    <Ionicons name="eye-outline" size={20} color={iconColor} />
-                    <Text className="ml-3 text-base font-medium text-gray-800 dark:text-gray-200">
-                      Preview
-                    </Text>
-                  </Pressable>
-
-                  <Pressable
-                    onPress={() => downloadFile(selectedItem)}
-                    className="mb-3 flex-row items-center rounded-xl border border-gray-200/70 px-4 py-3 dark:border-white/10 dark:bg-white/5">
-                    <Ionicons name="download-outline" size={20} color={iconColor} />
-                    <Text className="ml-3 text-base font-medium text-gray-800 dark:text-gray-200">
-                      Download
-                    </Text>
-                  </Pressable>
-                </>
-              )}
-
-              <Pressable
-                onPress={() => {
-                  setIsActionSheetVisible(false);
-                  setIsMoveModalVisible(true);
-                }}
-                className="mb-3 flex-row items-center rounded-xl border border-gray-200/70 px-4 py-3 dark:border-white/10 dark:bg-white/5">
-                <Ionicons name="move-outline" size={20} color={iconColor} />
-                <Text className="ml-3 text-base font-medium text-gray-800 dark:text-gray-200">
-                  Move {selectedItem.type}
+            <View className="rounded-t-3xl border-t border-zinc-800 bg-zinc-950 p-6">
+              <View className="mb-6 items-center">
+                <View className="mb-4 h-1 w-12 rounded-full bg-zinc-700" />
+                <Text className="text-xl font-bold text-zinc-100">{selectedItem.name}</Text>
+                <Text className="mt-1 text-sm text-zinc-500">
+                  {selectedItem.type === 'folder'
+                    ? 'Folder'
+                    : `${formatFileSize(selectedItem.size_bytes ?? 0)} file`}
                 </Text>
-              </Pressable>
+              </View>
 
-              <Pressable
-                onPress={() => {
-                  Alert.alert(
-                    `Delete ${selectedItem.type}`,
-                    `Are you sure you want to delete "${selectedItem.name}"? This action cannot be undone.`,
-                    [
-                      { text: 'Cancel', style: 'cancel', onPress: () => {} },
-                      {
-                        text: 'Delete',
-                        style: 'destructive',
-                        onPress: () => handleDelete(selectedItem),
-                      },
-                    ]
-                  );
-                }}
-                className="flex-row items-center rounded-xl border border-rose-200/60 px-4 py-3 dark:border-rose-400/30 dark:bg-rose-950/20">
-                <Ionicons name="trash-outline" size={20} color="#dc2626" />
-                <Text className="ml-3 text-base font-semibold text-rose-600 dark:text-rose-300">
-                  Delete {selectedItem.type}
-                </Text>
-              </Pressable>
+              <View className="gap-2">
+                {selectedItem.type === 'file' && (
+                  <>
+                    <Button
+                      onPress={() => openPreview(selectedItem)}
+                      variant="ghost"
+                      size="lg"
+                      title="Preview"
+                      leftIcon={<Ionicons name="eye-outline" size={20} color="#71717a" />}
+                      className="justify-start"
+                    />
+
+                    <Button
+                      onPress={() => downloadFile(selectedItem)}
+                      variant="ghost"
+                      size="lg"
+                      title="Download"
+                      leftIcon={<Ionicons name="download-outline" size={20} color="#a1a1aa" />}
+                      className="justify-start"
+                    />
+                  </>
+                )}
+
+                <Button
+                  onPress={() => {
+                    setIsActionSheetVisible(false);
+                    setIsMoveModalVisible(true);
+                  }}
+                  variant="ghost"
+                  size="lg"
+                  title={`Move ${selectedItem.type}`}
+                  leftIcon={<Ionicons name="move-outline" size={20} color="#a1a1aa" />}
+                  className="justify-start"
+                />
+
+                <Button
+                  onPress={() => {
+                    Alert.alert(
+                      `Delete ${selectedItem.type}`,
+                      `Are you sure you want to delete "${selectedItem.name}"? This action cannot be undone.`,
+                      [
+                        { text: 'Cancel', style: 'cancel' },
+                        {
+                          text: 'Delete',
+                          style: 'destructive',
+                          onPress: () => handleDelete(selectedItem),
+                        },
+                      ]
+                    );
+                  }}
+                  variant="ghost"
+                  size="lg"
+                  title={`Delete ${selectedItem.type}`}
+                  leftIcon={<Ionicons name="trash-outline" size={20} color="#a1a1aa" />}
+                  className="justify-start"
+                />
+              </View>
+
+              <Button
+                onPress={() => setIsActionSheetVisible(false)}
+                variant="outline"
+                size="lg"
+                title="Cancel"
+                className="mt-6"
+              />
             </View>
           </Pressable>
         </Modal>
@@ -637,35 +690,46 @@ const FileManagerScreen: React.FC<FileManagerScreenProps> = ({ navigation }) => 
           style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
           onPress={() => setIsCreateFolderModalVisible(false)}>
           <Pressable className="w-[90%] max-w-md" onPress={() => {}}>
-            <View className="rounded-3xl border border-gray-200/70 bg-white/95 p-6 dark:border-white/10 dark:bg-white/5">
-              <Text className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">
-                Create a folder
-              </Text>
+            <Card variant="elevated" padding="lg">
+              <View className="mb-6 items-center">
+                <View className="mb-4 h-16 w-16 items-center justify-center rounded-2xl bg-brand-primary/10">
+                  <Ionicons name="folder-open-outline" size={28} color="#71717a" />
+                </View>
+                <Text className="text-2xl font-bold text-zinc-100">Create Folder</Text>
+                <Text className="mt-1 text-sm text-zinc-500">Give your new folder a name</Text>
+              </View>
+
               <TextInput
                 value={newFolderName}
                 onChangeText={setNewFolderName}
-                placeholder="Folder name"
-                placeholderTextColor="#9ca3af"
-                className="mb-5 w-full rounded-xl border border-gray-200/70 bg-white px-4 py-3 text-base text-gray-900 dark:border-white/10 dark:bg-white/10 dark:text-white"
+                placeholder="Enter folder name..."
+                placeholderTextColor="#71717a"
+                className="mb-6 w-full rounded-2xl bg-zinc-900 px-4 py-4 text-lg text-zinc-100"
                 autoFocus
               />
-              <View className="flex-row justify-end" style={{ gap: 12 }}>
+
+              <View className="gap-3">
                 <Button
-                  variant="secondary"
+                  onPress={handleCreateFolder}
+                  disabled={createFolderMutation.isPending || !newFolderName.trim()}
+                  loading={createFolderMutation.isPending}
+                  variant="primary"
+                  size="lg"
+                  title="Create Folder"
+                  className="w-full"
+                />
+                <Button
+                  variant="outline"
+                  size="lg"
                   title="Cancel"
                   onPress={() => {
                     setIsCreateFolderModalVisible(false);
                     setNewFolderName('');
                   }}
-                />
-                <Button
-                  onPress={createFolder}
-                  disabled={createFolderMutation.isPending}
-                  loading={createFolderMutation.isPending}
-                  title="Create"
+                  className="w-full"
                 />
               </View>
-            </View>
+            </Card>
           </Pressable>
         </Pressable>
       </Modal>
@@ -675,10 +739,13 @@ const FileManagerScreen: React.FC<FileManagerScreenProps> = ({ navigation }) => 
             className="flex-1 items-center justify-center"
             style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
             onPress={() => setIsMoveModalVisible(false)}>
-            <Pressable className="h-[60%] w-[90%] max-w-md" onPress={() => {}}>
-              <View className="flex-1 rounded-3xl border border-gray-200/70 bg-white/95 dark:border-white/10 dark:bg-white/5">
-                <View className="border-b border-gray-200/70 px-5 py-4 dark:border-white/10">
-                  <Text className="text-lg font-semibold text-gray-900 dark:text-white">Move to…</Text>
+            <Pressable className="h-[70%] w-[90%] max-w-md" onPress={() => {}}>
+              <Card variant="elevated" padding="none" className="flex-1">
+                <View className="border-b border-zinc-800 px-6 py-4">
+                  <Text className="text-xl font-bold text-zinc-100">Move Item</Text>
+                  <Text className="mt-1 text-sm text-zinc-500">
+                    Choose a destination for &quot;{selectedItem.name}&quot;
+                  </Text>
                 </View>
                 <FolderPicker
                   onSelectFolder={(destinationId) => {
@@ -690,7 +757,7 @@ const FileManagerScreen: React.FC<FileManagerScreenProps> = ({ navigation }) => 
                   movingItemId={selectedItem.id}
                   itemType={selectedItem.type}
                 />
-              </View>
+              </Card>
             </Pressable>
           </Pressable>
         </Modal>
@@ -711,15 +778,15 @@ const FileManagerScreen: React.FC<FileManagerScreenProps> = ({ navigation }) => 
             />
             <Pressable
               onPress={() => setPreviewImageUrl(null)}
-              className="absolute right-5 top-10 rounded-full bg-white/20 p-2">
-              <Ionicons name="close" size={32} color="white" />
+              className="absolute right-5 top-10 rounded-full bg-zinc-900/80 p-2">
+              <Ionicons name="close" size={32} color="#f4f4f5" />
             </Pressable>
           </SafeAreaView>
         </Modal>
       )}
       {Object.values(downloadingFiles).length > 0 && (
         <View
-          className="absolute bottom-5 left-5 right-5 rounded-2xl border border-gray-200/70 bg-white/95 p-4 shadow-lg dark:border-white/10 dark:bg-white/10"
+          className="absolute bottom-5 left-5 right-5 rounded-2xl border border-zinc-800 bg-zinc-900/95 p-4 shadow-lg"
           style={{
             bottom: insets.bottom + 10,
             left: insets.left + 10,
@@ -727,12 +794,12 @@ const FileManagerScreen: React.FC<FileManagerScreenProps> = ({ navigation }) => 
           }}>
           {Object.values(downloadingFiles).map((download) => (
             <View key={download.name} className="mb-2">
-              <Text className="mb-1 text-sm font-medium text-gray-800 dark:text-gray-100">
+              <Text className="mb-1 text-sm font-medium text-zinc-100">
                 Downloading {download.name}…
               </Text>
-              <View className="h-2 rounded-full bg-gray-200 dark:bg-white/20">
+              <View className="h-2 rounded-full bg-zinc-800">
                 <View
-                  className="h-2 rounded-full bg-gray-900 dark:bg-white"
+                  className="h-2 rounded-full bg-zinc-200"
                   style={{ width: `${download.progress * 100}%` }}
                 />
               </View>

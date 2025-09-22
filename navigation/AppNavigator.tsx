@@ -3,9 +3,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import colors from 'tailwindcss/colors';
 import { useAuth } from '../contexts/AuthContext';
-import { useTheme } from '../contexts/ThemeContext';
 
 // Import screens
 import AuthScreen from '../screens/AuthScreen';
@@ -22,17 +20,16 @@ type RootStackParamList = {
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator<RootStackParamList>();
 
-function TabNavigator() {
-  const { colorScheme } = useTheme();
-  const insets = useSafeAreaInsets();
+const tabPalette = {
+  textActive: '#e4e4e7',
+  textInactive: '#71717a',
+  activeIndicator: '#e4e4e7',
+  tabBar: '#111113',
+  border: '#27272a',
+};
 
-  const themeColors = {
-    textActive: colorScheme === 'dark' ? colors.gray[100] : colors.gray[900],
-    textInactive: colorScheme === 'dark' ? colors.gray[500] : colors.gray[400],
-    activeIndicator: colorScheme === 'dark' ? colors.gray[100] : colors.gray[900],
-    tabBar: colorScheme === 'dark' ? colors.gray[900] : colors.white,
-    border: colorScheme === 'dark' ? colors.gray[800] : colors.gray[200],
-  };
+function TabNavigator() {
+  const insets = useSafeAreaInsets();
 
   return (
     <Tab.Navigator
@@ -55,17 +52,17 @@ function TabNavigator() {
               {focused && (
                 <View
                   className="absolute -top-4 h-1 w-12 rounded-full"
-                  style={{ backgroundColor: themeColors.activeIndicator }}
+                  style={{ backgroundColor: tabPalette.activeIndicator }}
                 />
               )}
             </View>
           );
         },
-        tabBarActiveTintColor: themeColors.textActive,
-        tabBarInactiveTintColor: themeColors.textInactive,
+        tabBarActiveTintColor: tabPalette.textActive,
+        tabBarInactiveTintColor: tabPalette.textInactive,
         tabBarStyle: {
-          backgroundColor: themeColors.tabBar,
-          borderTopColor: themeColors.border,
+          backgroundColor: tabPalette.tabBar,
+          borderTopColor: tabPalette.border,
           borderTopWidth: 1,
           elevation: 0,
           shadowOpacity: 0,
@@ -91,24 +88,20 @@ function TabNavigator() {
 
 function AppNavigator() {
   const { user, loading } = useAuth();
-  const { colorScheme } = useTheme();
-
-  const themeColors = {
-    primary: colorScheme === 'dark' ? colors.blue[500] : colors.blue[600],
-    surface: colorScheme === 'dark' ? colors.gray[900] : colors.white,
-    border: colorScheme === 'dark' ? colors.gray[800] : colors.gray[200],
-    text: colorScheme === 'dark' ? colors.gray[50] : colors.gray[900],
-    background: colorScheme === 'dark' ? colors.black : colors.gray[50],
+  const stackPalette = {
+    primary: '#a1a1aa',
+    surface: '#111113',
+    border: '#27272a',
+    text: '#e4e4e7',
+    background: '#09090b',
   };
 
   if (loading) {
     return (
-      <View className="flex-1 items-center justify-center bg-gray-50 dark:bg-black">
+      <View className="flex-1 items-center justify-center bg-zinc-950">
         <View className="items-center">
-          <ActivityIndicator size="large" color={themeColors.primary} />
-          <Text className="mt-4 text-lg font-medium text-gray-600 dark:text-gray-400">
-            Loading...
-          </Text>
+          <ActivityIndicator size="large" color={stackPalette.primary} />
+          <Text className="mt-4 text-lg font-medium text-zinc-500">Loading...</Text>
         </View>
       </View>
     );
@@ -118,19 +111,19 @@ function AppNavigator() {
     <Stack.Navigator
       screenOptions={{
         headerStyle: {
-          backgroundColor: themeColors.surface,
+          backgroundColor: stackPalette.surface,
           elevation: 0,
           shadowOpacity: 0,
           borderBottomWidth: 1,
-          borderBottomColor: themeColors.border,
+          borderBottomColor: stackPalette.border,
         },
-        headerTintColor: themeColors.text,
+        headerTintColor: stackPalette.text,
         headerTitleStyle: {
           fontWeight: '700',
           fontSize: 18,
         },
         cardStyle: {
-          backgroundColor: themeColors.background,
+          backgroundColor: stackPalette.background,
         },
       }}>
       {user ? (
@@ -143,7 +136,7 @@ function AppNavigator() {
               title: 'Upload Files',
               presentation: 'modal',
               headerStyle: {
-                backgroundColor: themeColors.surface,
+                backgroundColor: stackPalette.surface,
               },
             }}
           />

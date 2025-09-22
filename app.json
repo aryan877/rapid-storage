@@ -17,10 +17,10 @@
         {
           "image": "./assets/splash-icon-light.png",
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff",
+          "backgroundColor": "#09090b",
           "dark": {
             "image": "./assets/splash-icon-dark.png",
-            "backgroundColor": "#000000"
+            "backgroundColor": "#09090b"
           },
           "imageWidth": 200
         }
@@ -34,7 +34,7 @@
     ],
     "orientation": "portrait",
     "icon": "./assets/adaptive-icon.png",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "dark",
     "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
@@ -46,7 +46,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#09090b"
       },
       "package": "com.rapidstorage.app"
     },

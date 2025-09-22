@@ -1,45 +1,34 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import React from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View,
-  useColorScheme,
-} from 'react-native';
+import { ActivityIndicator, Alert, Dimensions, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Button from '../components/Button';
+import Card from '../components/Card';
 import { useAuth } from '../contexts/AuthContext';
+
+const { width: screenWidth } = Dimensions.get('window');
 
 const AuthScreen: React.FC = () => {
   const { signInWithGoogle, loading } = useAuth();
-  const colorScheme = useColorScheme();
-  const iconColor = colorScheme === 'dark' ? '#e5e7eb' : '#111827';
-
-  const buttonShadow = {
-    shadowColor: colorScheme === 'dark' ? '#00000080' : '#1118270f',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: colorScheme === 'dark' ? 0.32 : 0.08,
-    shadowRadius: 24,
-    elevation: 4,
-  };
 
   const features = [
     {
       icon: 'folder-open-outline' as const,
-      title: 'Organized by default',
-      description: 'Nest folders and find files without digging.',
+      title: 'Smart Organization',
+      description: 'Automatically organized folders and lightning-fast search.',
+      gradient: ['#52525b', '#3f3f46'],
     },
     {
       icon: 'cloud-outline' as const,
-      title: 'Generous storage',
-      description: 'Upload up to 5GB per file with ease.',
+      title: 'Unlimited Space',
+      description: 'Store files up to 5GB each with generous cloud storage.',
+      gradient: ['#3f3f46', '#27272a'],
     },
     {
       icon: 'shield-checkmark-outline' as const,
-      title: 'Private & secure',
-      description: 'End-to-end encryption backed by AWS S3.',
+      title: 'Military Security',
+      description: 'End-to-end encryption with enterprise-grade protection.',
+      gradient: ['#27272a', '#18181b'],
     },
   ];
 
@@ -47,83 +36,102 @@ const AuthScreen: React.FC = () => {
     try {
       await signInWithGoogle();
     } catch (error: any) {
-      Alert.alert('Error', error.message);
+      Alert.alert('Authentication Error', error.message);
     }
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-[#f7f8fb] dark:bg-black">
+    <SafeAreaView className="flex-1 bg-zinc-950">
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ flexGrow: 1 }}
+        contentContainerStyle={{
+          flexGrow: 1,
+          paddingHorizontal: screenWidth > 768 ? 64 : 24,
+          paddingVertical: 32,
+        }}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}>
-        <View className="flex-1 justify-between px-6 py-10">
-          <View>
-            <View className="items-center">
-              <View className="mb-7 h-16 w-16 items-center justify-center rounded-full border border-gray-200/70 bg-white/80 dark:border-white/10 dark:bg-white/5">
-                <Ionicons name="cloud-outline" size={30} color={iconColor} />
-              </View>
-              <Text className="text-4xl font-semibold tracking-tight text-gray-900 dark:text-white">
-                Rapid Storage
-              </Text>
-              <Text className="mt-3 max-w-xs text-center text-base leading-relaxed text-gray-500 dark:text-gray-400">
-                A calm space to save, organize, and access your files anywhere.
-              </Text>
-            </View>
-
-            <View className="mt-12 items-center">
-              <Text className="text-xs uppercase tracking-[0.35em] text-gray-400 dark:text-gray-500">
-                Sign in
-              </Text>
-              <TouchableOpacity
-                onPress={handleGoogleSignIn}
-                disabled={loading}
-                className="mt-6 w-full max-w-sm rounded-2xl border border-gray-200/70 bg-white px-6 py-5 active:scale-[0.99] dark:border-white/10 dark:bg-neutral-900"
-                style={buttonShadow}>
-                <View className="flex-row items-center justify-center" style={{ gap: 10 }}>
-                  {loading ? (
-                    <ActivityIndicator size="small" color="#4285F4" />
-                  ) : (
-                    <>
-                      <MaterialCommunityIcons name="google" size={22} color="#4285F4" />
-                      <Text className="text-base font-medium text-gray-900 dark:text-gray-100">
-                        Continue with Google
-                      </Text>
-                    </>
-                  )}
-                </View>
-              </TouchableOpacity>
-              <Text className="mt-4 text-center text-sm text-gray-500 dark:text-gray-500">
-                Use your Google account to get started.
-              </Text>
-            </View>
-
-            <View className="mt-14 gap-3">
-              {features.map(feature => (
-                <View
-                  key={feature.title}
-                  className="flex-row items-start rounded-3xl border border-gray-200/60 bg-white/80 px-5 py-4 dark:border-white/10 dark:bg-white/5">
-                  <View className="mr-4 mt-1 rounded-full border border-gray-200/80 p-2 dark:border-white/10">
-                    <Ionicons name={feature.icon} size={18} color={iconColor} />
-                  </View>
-                  <View className="flex-1">
-                    <Text className="text-base font-semibold text-gray-900 dark:text-white">{feature.title}</Text>
-                    <Text className="mt-1 text-sm leading-relaxed text-gray-500 dark:text-gray-400">
-                      {feature.description}
-                    </Text>
-                  </View>
-                </View>
-              ))}
-            </View>
+        {/* Header Section */}
+        <View className="mb-12 items-center">
+          <View className="mb-8 h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br from-brand-primary to-brand-secondary shadow-2xl">
+            <Ionicons name="cloud" size={40} color="#f4f4f5" />
           </View>
 
-          <View className="pt-8">
-            <Text className="text-center text-xs leading-relaxed text-gray-500 dark:text-gray-600">
-              By continuing, you agree to our <Text className="font-semibold text-gray-700 dark:text-gray-400">Terms</Text> and{' '}
-              <Text className="font-semibold text-gray-700 dark:text-gray-400">Privacy Policy</Text>
+          <Text className="mb-4 text-5xl font-bold tracking-tight text-zinc-100">
+            Rapid Storage
+          </Text>
+
+          <Text className="max-w-md text-center text-lg leading-relaxed text-zinc-400">
+            The most beautiful way to store, organize, and access your files from anywhere.
+          </Text>
+        </View>
+
+        {/* Features Grid */}
+        <View className={`mb-12 ${screenWidth > 768 ? 'flex-row gap-4' : 'gap-4'}`}>
+          {features.map((feature, index) => (
+            <Card
+              key={feature.title}
+              variant="glass"
+              padding="lg"
+              className={`${screenWidth > 768 ? 'flex-1' : ''}`}
+              style={{ marginBottom: screenWidth > 768 ? 0 : 16 }}>
+              <View className="items-center">
+                <View
+                  className="mb-4 h-14 w-14 items-center justify-center rounded-2xl"
+                  style={{
+                    backgroundColor: feature.gradient[0],
+                  }}>
+                  <Ionicons name={feature.icon} size={24} color="#f4f4f5" />
+                </View>
+
+                <Text className="mb-2 text-center text-lg font-semibold text-zinc-100">
+                  {feature.title}
+                </Text>
+
+                <Text className="text-center text-sm leading-relaxed text-zinc-400">
+                  {feature.description}
+                </Text>
+              </View>
+            </Card>
+          ))}
+        </View>
+
+        {/* Authentication Section */}
+        <Card variant="elevated" padding="lg" className="mb-8">
+          <View className="items-center">
+            <Text className="mb-6 text-xs uppercase tracking-widest text-zinc-500">
+              Get Started
+            </Text>
+
+            <Button
+              onPress={handleGoogleSignIn}
+              disabled={loading}
+              variant="primary"
+              size="lg"
+              title={loading ? 'Signing in...' : 'Continue with Google'}
+              leftIcon={
+                loading ? (
+                  <ActivityIndicator size="small" color="#09090b" />
+                ) : (
+                  <MaterialCommunityIcons name="google" size={20} color="#09090b" />
+                )
+              }
+              className="w-full max-w-sm"
+            />
+
+            <Text className="mt-6 text-center text-sm leading-relaxed text-zinc-500">
+              Secure authentication powered by Google
             </Text>
           </View>
+        </Card>
+
+        {/* Footer */}
+        <View className="items-center pt-8">
+          <Text className="max-w-md text-center text-xs leading-relaxed text-zinc-500">
+            By continuing, you agree to our{' '}
+            <Text className="font-medium text-zinc-400">Terms of Service</Text> and{' '}
+            <Text className="font-medium text-zinc-400">Privacy Policy</Text>
+          </Text>
         </View>
       </ScrollView>
     </SafeAreaView>
