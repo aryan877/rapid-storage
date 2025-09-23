@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import * as DocumentPicker from 'expo-document-picker';
+import * as ImagePicker from 'expo-image-picker';
 import React, { useState } from 'react';
 import { Alert, Dimensions, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -32,6 +33,34 @@ const UploadScreen: React.FC<UploadScreenProps> = ({ navigation, route }) => {
   const [files, setFiles] = useState<FileToUpload[]>([]);
   const queryClient = useQueryClient();
 
+  const pickMedia = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission needed', 'Please grant library access to upload photos or videos.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      allowsMultipleSelection: true,
+      mediaTypes: ImagePicker.MediaTypeOptions.All,
+      quality: 1,
+    });
+
+    if (!result.canceled) {
+      const newFiles = result.assets.map((asset) => ({
+        name: asset.fileName || asset.uri.split('/').pop() || `media_${Date.now()}`,
+        uri: asset.uri,
+        type:
+          asset.type === 'video'
+            ? 'video/mp4'
+            : asset.mimeType ||
+              (asset.type === 'image' ? 'image/jpeg' : 'application/octet-stream'),
+        size: asset.fileSize || 0,
+      }));
+      setFiles((prev) => [...prev, ...newFiles]);
+    }
+  };
+
   const pickFiles = async () => {
     const result = await DocumentPicker.getDocumentAsync({
       multiple: true,
@@ -45,7 +74,7 @@ const UploadScreen: React.FC<UploadScreenProps> = ({ navigation, route }) => {
         type: asset.mimeType || 'application/octet-stream',
         size: asset.size || 0,
       }));
-      setFiles([...files, ...newFiles]);
+      setFiles((prev) => [...prev, ...newFiles]);
     }
   };
 
@@ -163,18 +192,34 @@ const UploadScreen: React.FC<UploadScreenProps> = ({ navigation, route }) => {
           </Text>
         </View>
 
-        {/* Upload Action */}
-        <Card variant="elevated" padding="lg" className="mb-8">
-          <Pressable onPress={pickFiles} className="items-center">
-            <View className="mb-4 h-16 w-16 items-center justify-center rounded-3xl bg-zinc-800">
-              <Ionicons name="cloud-upload-outline" size={32} color="#71717a" />
-            </View>
-            <Text className="mb-2 text-center text-xl font-bold text-zinc-100">Select Files</Text>
-            <Text className="text-center text-sm text-zinc-500">
-              Choose photos, videos, or documents to add them to your upload queue.
-            </Text>
-          </Pressable>
-        </Card>
+        {/* Upload Actions */}
+        <View className={`mb-8 ${screenWidth > 768 ? 'flex-row gap-6' : 'gap-4'}`}>
+          <Card variant="elevated" padding="lg" className={`${screenWidth > 768 ? 'flex-1' : ''}`}>
+            <Pressable onPress={pickMedia} className="items-center">
+              <View className="mb-4 h-16 w-16 items-center justify-center rounded-3xl bg-zinc-800">
+                <Ionicons name="images" size={28} color="#71717a" />
+              </View>
+              <Text className="mb-2 text-center text-xl font-bold text-zinc-100">
+                Photos & Videos
+              </Text>
+              <Text className="text-center text-sm text-zinc-500">
+                Choose media from your library to upload instantly.
+              </Text>
+            </Pressable>
+          </Card>
+
+          <Card variant="elevated" padding="lg" className={`${screenWidth > 768 ? 'flex-1' : ''}`}>
+            <Pressable onPress={pickFiles} className="items-center">
+              <View className="mb-4 h-16 w-16 items-center justify-center rounded-3xl bg-zinc-800">
+                <Ionicons name="cloud-upload-outline" size={32} color="#71717a" />
+              </View>
+              <Text className="mb-2 text-center text-xl font-bold text-zinc-100">Browse Files</Text>
+              <Text className="text-center text-sm text-zinc-500">
+                Pick any documents or other files to add to your upload queue.
+              </Text>
+            </Pressable>
+          </Card>
+        </View>
 
         {/* Selected Files */}
         {files.length > 0 && (
