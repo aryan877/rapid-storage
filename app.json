@@ -30,7 +30,32 @@
         {
           "photosPermission": "Rapid Storage needs access to your photo library to let you select and upload images and videos."
         }
-      ]
+      ],
+      [
+        "expo-share-intent",
+        {
+          "iosActivationRules": {
+            "NSExtensionActivationSupportsFileWithMaxCount": 100,
+            "NSExtensionActivationSupportsImageWithMaxCount": 50,
+            "NSExtensionActivationSupportsMovieWithMaxCount": 20,
+            "NSExtensionActivationSupportsWebURLWithMaxCount": 1,
+            "NSExtensionActivationSupportsWebPageWithMaxCount": 1,
+            "NSExtensionActivationSupportsTextWithMaxCount": 1
+          },
+          "androidIntentFilters": [
+            "image/*",
+            "video/*",
+            "application/*",
+            "text/*",
+            "audio/*",
+            "*/*"
+          ],
+          "androidMainActivityAttributes": {
+            "android:launchMode": "singleTask"
+          }
+        }
+      ],
+      "expo-font"
     ],
     "orientation": "portrait",
     "icon": "./assets/adaptive-icon.png",
@@ -40,15 +65,56 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.rapidstorage.app",
       "icon": "./assets/ios-light.png",
-      "darkIcon": "./assets/ios-dark.png",
-      "tintedIcon": "./assets/ios-tinted.png"
+      "infoPlist": {
+        "NSDocumentsFolderUsageDescription": "Rapid Storage needs access to your documents to let you upload and manage files.",
+        "NSPhotoLibraryUsageDescription": "Rapid Storage needs access to your photo library to let you select and upload images and videos.",
+        "NSCameraUsageDescription": "Rapid Storage needs access to your camera to let you take photos and videos to upload.",
+        "CFBundleDocumentTypes": [
+          {
+            "CFBundleTypeName": "All Files",
+            "CFBundleTypeRole": "Viewer",
+            "LSHandlerRank": "Owner",
+            "LSItemContentTypes": ["public.content", "public.data"]
+          },
+          {
+            "CFBundleTypeName": "Images",
+            "CFBundleTypeRole": "Viewer",
+            "LSHandlerRank": "Owner",
+            "LSItemContentTypes": ["public.image"]
+          },
+          {
+            "CFBundleTypeName": "Videos",
+            "CFBundleTypeRole": "Viewer",
+            "LSHandlerRank": "Owner",
+            "LSItemContentTypes": ["public.movie"]
+          },
+          {
+            "CFBundleTypeName": "Documents",
+            "CFBundleTypeRole": "Viewer",
+            "LSHandlerRank": "Owner",
+            "LSItemContentTypes": [
+              "public.text",
+              "public.plain-text",
+              "public.pdf",
+              "com.adobe.pdf"
+            ]
+          }
+        ]
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#09090b"
       },
-      "package": "com.rapidstorage.app"
+      "package": "com.rapidstorage.app",
+      "permissions": [
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.MANAGE_EXTERNAL_STORAGE"
+      ]
     },
     "extra": {
       "eas": {

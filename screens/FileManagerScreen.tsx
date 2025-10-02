@@ -34,15 +34,7 @@ import {
   useMoveFolderMutation,
 } from '../queries';
 import { File, Folder, formatFileSize, getFileIcon, type FileIconType } from '../types/database';
-
-type Item = (File | Folder) & {
-  type: 'file' | 'folder';
-  s3_key?: string;
-  folder_id?: string | null;
-  parent_id?: string | null;
-  size_bytes?: number;
-  mime_type?: string | null;
-};
+import { SAFE_LIMITS } from '../config/safeLimits';
 
 interface FileManagerScreenProps {
   navigation: any;
@@ -125,17 +117,40 @@ const FileManagerScreen: React.FC<FileManagerScreenProps> = ({ navigation }) => 
   const fadeAnim = useState(new Animated.Value(0))[0];
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
-  const [selectedItem, setSelectedItem] = useState<Item | null>(null);
+  const [selectedItem, setSelectedItem] = useState<any>(null);
   const [isActionSheetVisible, setIsActionSheetVisible] = useState(false);
   const [isMoveModalVisible, setIsMoveModalVisible] = useState(false);
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
   const [downloadingFiles, setDownloadingFiles] = useState<
     Record<string, { progress: number; name: string }>
   >({});
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
 
-  const openActionSheet = useCallback((item: Item) => {
+  const openActionSheet = useCallback((item: any) => {
     setSelectedItem(item);
     setIsActionSheetVisible(true);
+  }, []);
+
+  const toggleSelectionMode = useCallback(() => {
+    setSelectionMode(!selectionMode);
+    setSelectedItems(new Set());
+  }, [selectionMode]);
+
+  const toggleItemSelection = useCallback((itemId: string) => {
+    setSelectedItems((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(itemId)) {
+        newSet.delete(itemId);
+      } else {
+        newSet.add(itemId);
+      }
+      return newSet;
+    });
+  }, []);
+
+  const deselectAllItems = useCallback(() => {
+    setSelectedItems(new Set());
   }, []);
 
   // Memoize the search change handler to prevent unnecessary re-renders
@@ -195,7 +210,7 @@ const FileManagerScreen: React.FC<FileManagerScreenProps> = ({ navigation }) => 
   const deleteFolderMutation = useDeleteFolderMutation();
   const deleteFileMutation = useDeleteFileMutation();
 
-  const handleDelete = async (item: Item) => {
+  const handleDelete = async (item: any) => {
     try {
       if (item.type === 'folder') {
         await deleteFolderMutation.mutateAsync(item.id);
@@ -216,7 +231,7 @@ const FileManagerScreen: React.FC<FileManagerScreenProps> = ({ navigation }) => 
   const moveFolderMutation = useMoveFolderMutation();
   const moveFileMutation = useMoveFileMutation();
 
-  const handleMove = async (item: Item, destinationFolderId: string | null) => {
+  const handleMove = async (item: any, destinationFolderId: string | null) => {
     try {
       if (item.type === 'folder') {
         await moveFolderMutation.mutateAsync({
@@ -237,7 +252,7 @@ const FileManagerScreen: React.FC<FileManagerScreenProps> = ({ navigation }) => 
     }
   };
 
-  const downloadFile = async (file: Item) => {
+  const downloadFile = async (file: any) => {
     if (file.type !== 'file' || !file.s3_key) return;
     if (downloadingFiles[file.id]) return; // Prevent multiple downloads
 
@@ -278,7 +293,10 @@ const FileManagerScreen: React.FC<FileManagerScreenProps> = ({ navigation }) => 
 
       await Sharing.shareAsync(downloadResult.uri);
     } catch (error) {
-      Alert.alert('Error', `Failed to download file. ${(error as Error).message}`);
+      Alert.alert(
+        'Download Error',
+        `Failed to download file: ${(error as Error).message}. Please try again.`
+      );
     } finally {
       setDownloadingFiles((prev) => {
         const newDownloads = { ...prev };
@@ -288,7 +306,7 @@ const FileManagerScreen: React.FC<FileManagerScreenProps> = ({ navigation }) => 
     }
   };
 
-  const openPreview = useCallback(async (file: Item) => {
+  const openPreview = useCallback(async (file: any) => {
     if (file.type !== 'file' || !file.s3_key || !file.mime_type?.startsWith('image/')) {
       Alert.alert('Preview not available', 'This file type cannot be previewed.');
       return;
@@ -402,8 +420,21 @@ const FileManagerScreen: React.FC<FileManagerScreenProps> = ({ navigation }) => 
     ({ item }: { item: Folder }) => (
       <View className="mx-4 mb-3">
         <Pressable
-          onPress={() => navigateToFolder(item)}
-          className="flex-row items-center rounded-2xl border border-zinc-800 bg-zinc-900 p-4 active:bg-zinc-800">
+          onPress={() => (selectionMode ? toggleItemSelection(item.id) : navigateToFolder(item))}
+          className={`flex-row items-center rounded-2xl border p-4 active:bg-zinc-800 ${
+            selectionMode && selectedItems.has(item.id)
+              ? 'border-blue-500 bg-blue-900/30'
+              : 'border-zinc-800 bg-zinc-900'
+          }`}>
+          {selectionMode && (
+            <View className="mr-3">
+              <Ionicons
+                name={selectedItems.has(item.id) ? 'checkmark-circle' : 'ellipse-outline'}
+                size={24}
+                color={selectedItems.has(item.id) ? '#3b82f6' : '#71717a'}
+              />
+            </View>
+          )}
           <View className="mr-4 h-12 w-12 items-center justify-center rounded-2xl bg-zinc-800">
             <Ionicons name="folder" size={24} color="#71717a" />
           </View>
@@ -413,23 +444,47 @@ const FileManagerScreen: React.FC<FileManagerScreenProps> = ({ navigation }) => 
               Created {new Date(item.created_at!).toLocaleDateString()}
             </Text>
           </View>
-          <Pressable
-            className="ml-2 h-10 w-10 items-center justify-center rounded-xl bg-zinc-900"
-            onPress={() => openActionSheet({ ...item, type: 'folder' })}>
-            <Ionicons name="ellipsis-horizontal" size={18} color={iconColor} />
-          </Pressable>
+          {!selectionMode && (
+            <Pressable
+              className="ml-2 h-10 w-10 items-center justify-center rounded-xl bg-zinc-900"
+              onPress={() => openActionSheet({ ...item, type: 'folder' })}>
+              <Ionicons name="ellipsis-horizontal" size={18} color={iconColor} />
+            </Pressable>
+          )}
         </Pressable>
       </View>
     ),
-    [navigateToFolder, iconColor, openActionSheet]
+    [
+      navigateToFolder,
+      iconColor,
+      openActionSheet,
+      selectionMode,
+      selectedItems,
+      toggleItemSelection,
+    ]
   );
 
   const renderFile = useCallback(
     ({ item }: { item: File }) => (
       <View className="mx-4 mb-3">
         <Pressable
-          onPress={() => openPreview({ ...item, type: 'file' })}
-          className="flex-row items-center rounded-2xl border border-zinc-800 bg-zinc-900 p-4 active:bg-zinc-800">
+          onPress={() =>
+            selectionMode ? toggleItemSelection(item.id) : openPreview({ ...item, type: 'file' })
+          }
+          className={`flex-row items-center rounded-2xl border p-4 active:bg-zinc-800 ${
+            selectionMode && selectedItems.has(item.id)
+              ? 'border-blue-500 bg-blue-900/30'
+              : 'border-zinc-800 bg-zinc-900'
+          }`}>
+          {selectionMode && (
+            <View className="mr-3">
+              <Ionicons
+                name={selectedItems.has(item.id) ? 'checkmark-circle' : 'ellipse-outline'}
+                size={24}
+                color={selectedItems.has(item.id) ? '#3b82f6' : '#71717a'}
+              />
+            </View>
+          )}
           <View className="mr-4 h-12 w-12 items-center justify-center rounded-2xl bg-zinc-900">
             <FileIcon type={getFileIcon(item.mime_type || undefined)} size={24} />
           </View>
@@ -441,16 +496,89 @@ const FileManagerScreen: React.FC<FileManagerScreenProps> = ({ navigation }) => 
               {formatFileSize(item.size_bytes)} • {new Date(item.created_at!).toLocaleDateString()}
             </Text>
           </View>
-          <Pressable
-            className="ml-2 h-10 w-10 items-center justify-center rounded-xl bg-zinc-900"
-            onPress={() => openActionSheet({ ...item, type: 'file' })}>
-            <Ionicons name="ellipsis-horizontal" size={18} color={iconColor} />
-          </Pressable>
+          {!selectionMode && (
+            <Pressable
+              className="ml-2 h-10 w-10 items-center justify-center rounded-xl bg-zinc-900"
+              onPress={() => openActionSheet({ ...item, type: 'file' })}>
+              <Ionicons name="ellipsis-horizontal" size={18} color={iconColor} />
+            </Pressable>
+          )}
         </Pressable>
       </View>
     ),
-    [openPreview, iconColor, openActionSheet]
+    [openPreview, iconColor, openActionSheet, selectionMode, selectedItems, toggleItemSelection]
   );
+
+  React.useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: isCreateFolderModalVisible ? 1 : 0,
+      duration: 200,
+      useNativeDriver: true,
+    }).start();
+  }, [isCreateFolderModalVisible, fadeAnim]);
+
+  const allItems = useMemo(
+    () => [
+      ...folders.map((folder) => ({ ...folder, type: 'folder' as const })),
+      ...files.map((file) => ({ ...file, type: 'file' as const })),
+    ],
+    [folders, files]
+  );
+
+  const selectedCount = selectedItems.size;
+  const allSelected = allItems.length > 0 && selectedCount === allItems.length;
+
+  const selectAllItems = useCallback(() => {
+    const allItemIds = new Set(allItems.map((item) => item.id));
+    setSelectedItems(allItemIds);
+  }, [allItems]);
+
+  const bulkDelete = useCallback(async () => {
+    if (selectedItems.size === 0) return;
+
+    const itemsToDelete = allItems.filter((item) => selectedItems.has(item.id));
+    const fileCount = itemsToDelete.filter((item) => item.type === 'file').length;
+    const folderCount = itemsToDelete.filter((item) => item.type === 'folder').length;
+
+    let message = `Are you sure you want to delete ${selectedItems.size} item${selectedItems.size === 1 ? '' : 's'}?`;
+    if (fileCount > 0 && folderCount > 0) {
+      message = `Are you sure you want to delete ${fileCount} file${fileCount === 1 ? '' : 's'} and ${folderCount} folder${folderCount === 1 ? '' : 's'}?`;
+    } else if (fileCount > 0) {
+      message = `Are you sure you want to delete ${fileCount} file${fileCount === 1 ? '' : 's'}?`;
+    } else if (folderCount > 0) {
+      message = `Are you sure you want to delete ${folderCount} folder${folderCount === 1 ? '' : 's'}?`;
+    }
+
+    Alert.alert('Delete Items', message + ' This action cannot be undone.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            for (const item of itemsToDelete) {
+              if (item.type === 'folder') {
+                await deleteFolderMutation.mutateAsync(item.id);
+              } else {
+                await deleteFileMutation.mutateAsync({
+                  fileId: item.id,
+                  s3Key: item.s3_key!,
+                });
+              }
+            }
+            setSelectionMode(false);
+            setSelectedItems(new Set());
+            Alert.alert(
+              'Success',
+              `${selectedItems.size} item${selectedItems.size === 1 ? '' : 's'} deleted.`
+            );
+          } catch (error) {
+            Alert.alert('Error', `Failed to delete some items. ${(error as Error).message}`);
+          }
+        },
+      },
+    ]);
+  }, [selectedItems, allItems, deleteFolderMutation, deleteFileMutation]);
 
   // Memoize the header component to prevent unnecessary re-renders
   const renderHeader = useMemo(
@@ -472,6 +600,21 @@ const FileManagerScreen: React.FC<FileManagerScreenProps> = ({ navigation }) => 
             </View>
 
             <View className="flex-row items-center gap-3">
+              {allItems.length > 0 && (
+                <Button
+                  variant={selectionMode ? 'secondary' : 'outline'}
+                  size="sm"
+                  title={selectionMode ? 'Done' : 'Select'}
+                  leftIcon={
+                    <Ionicons
+                      name={selectionMode ? 'checkmark' : 'checkmark-circle-outline'}
+                      size={16}
+                      color={selectionMode ? '#09090b' : iconColor}
+                    />
+                  }
+                  onPress={toggleSelectionMode}
+                />
+              )}
               <Button
                 variant="outline"
                 size="sm"
@@ -488,6 +631,39 @@ const FileManagerScreen: React.FC<FileManagerScreenProps> = ({ navigation }) => 
               />
             </View>
           </View>
+
+          {/* Bulk Actions Bar */}
+          {selectionMode && (
+            <View className="mx-4 mb-4 flex-row items-center justify-between rounded-xl bg-zinc-800 p-3">
+              <View className="flex-row items-center gap-3">
+                <Text className="text-sm font-medium text-zinc-300">
+                  {selectedCount} of {allItems.length} selected
+                </Text>
+              </View>
+              <View className="flex-row gap-2">
+                {!allSelected && selectedCount < 50 && (
+                  <Button variant="ghost" size="sm" title="Select All" onPress={selectAllItems} />
+                )}
+                {selectedCount > 0 && (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      title="Deselect All"
+                      onPress={deselectAllItems}
+                    />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      title="Delete Selected"
+                      onPress={bulkDelete}
+                      leftIcon={<Ionicons name="trash-outline" size={16} color="#d4d4d8" />}
+                    />
+                  </>
+                )}
+              </View>
+            </View>
+          )}
         </View>
       </>
     ),
@@ -499,23 +675,15 @@ const FileManagerScreen: React.FC<FileManagerScreenProps> = ({ navigation }) => 
       renderBreadcrumb,
       handleNavigateToUpload,
       iconColor,
+      allItems,
+      selectedCount,
+      allSelected,
+      selectAllItems,
+      bulkDelete,
+      selectionMode,
+      toggleSelectionMode,
+      deselectAllItems,
     ]
-  );
-
-  React.useEffect(() => {
-    Animated.timing(fadeAnim, {
-      toValue: isCreateFolderModalVisible ? 1 : 0,
-      duration: 200,
-      useNativeDriver: true,
-    }).start();
-  }, [isCreateFolderModalVisible, fadeAnim]);
-
-  const allItems = useMemo(
-    () => [
-      ...folders.map((folder) => ({ ...folder, type: 'folder' as const })),
-      ...files.map((file) => ({ ...file, type: 'file' as const })),
-    ],
-    [folders, files]
   );
 
   return (
@@ -792,17 +960,22 @@ const FileManagerScreen: React.FC<FileManagerScreenProps> = ({ navigation }) => 
             left: insets.left + 10,
             right: insets.right + 10,
           }}>
+          <Text className="mb-3 text-sm font-medium text-zinc-100">
+            Downloading {Object.values(downloadingFiles).length} file
+            {Object.values(downloadingFiles).length === 1 ? '' : 's'}…
+          </Text>
           {Object.values(downloadingFiles).map((download) => (
-            <View key={download.name} className="mb-2">
-              <Text className="mb-1 text-sm font-medium text-zinc-100">
-                Downloading {download.name}…
-              </Text>
+            <View key={download.name} className="mb-3">
+              <Text className="mb-1 text-xs text-zinc-400">{download.name}</Text>
               <View className="h-2 rounded-full bg-zinc-800">
                 <View
-                  className="h-2 rounded-full bg-zinc-200"
+                  className="h-2 rounded-full bg-blue-500 transition-all duration-300"
                   style={{ width: `${download.progress * 100}%` }}
                 />
               </View>
+              <Text className="mt-1 text-xs text-zinc-500">
+                {Math.round(download.progress * 100)}% complete
+              </Text>
             </View>
           ))}
         </View>
